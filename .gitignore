@@ -1,3 +1,7 @@
+
+# Symlinks.
+examples/ti/lp-f28379d/bme280/build-systems
+
 # Generated.
 **/docs/doxygen/**/*.*
 
