@@ -16,7 +16,12 @@
 # 
 find . -type l -delete
 
-### Provide build-systems to all subprojects.
+# Provide build-systems to all subprojects.
+# 
 ln -s $(pwd)/build-systems $(pwd)/examples/ti/lp-f28379d/bme280/build-systems;
 
-# Symlink bsp and external dependencies into subprojects.
+# Provide project root to examples as a subproject.
+# 
+ln -s $(pwd) $(pwd)/examples/ti/lp-f28379d/bme280/subprojects/embedded-hal-c;
+
+# Symlink external dependencies into subprojects.
