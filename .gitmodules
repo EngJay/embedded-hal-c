@@ -1,3 +1,0 @@
-[submodule "examples/ti/f28379d/bme280/build-systems"]
-	path = examples/ti/f28379d/bme280/build-systems
-	url = https://github.com/EngJay/build-systems
