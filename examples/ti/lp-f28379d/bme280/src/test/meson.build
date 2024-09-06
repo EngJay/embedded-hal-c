@@ -14,15 +14,15 @@ cpputest_dep = cpputest_subproject.get_variable('cpputest_dep')
 
 #endregion TEST_DEPENDENCIES
 
-#region FLAGS
+#region TEST_FLAGS
 
 test_compiler_flags = native_cpp_compiler.get_supported_arguments(
 	'-Wno-unused-parameter',
 )
 
-#endregion FLAGS
+#endregion TEST_FLAGS
 
-#region SOURCES
+#region TEST_SOURCES
 
 # Inputs - these variables describe what to build
 #
@@ -69,9 +69,9 @@ all_test_src_files = [
 # 
 all_test_inc_dirs = include_directories(all_test_inc_dirs_arr)
 
-#endregion SOURCES
+#endregion TEST_SOURCES
 
-#region EXECUTABLES
+#region TEST_EXECUTABLES
 
 tests_exe = executable(test_executable_name,
 	all_test_src_files,
@@ -121,3 +121,5 @@ run_target('tests',
 # # Convenience target to generate the file via a command, instead of referencing the file
 # # directly (e.g., ninja -C buildresults/meson/analysis/clang-tidy/clangtidy.txt).
 # alias_target('clang-tidy-report', clangtidy_txt)
+
+#endregion TEST_EXECUTABLES
