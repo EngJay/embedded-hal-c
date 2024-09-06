@@ -3,7 +3,16 @@
 # @brief Meson module for test executables.
 # 
 
-test_executable_name = 'tests_exe'
+test_executable_name = 'example-i2c-ti-lp-f28379d-bme280-tests'
+
+#region TEST_DEPENDENCIES
+
+# Include the CppUTest subproject to get cpputest_dep.
+# 
+cpputest_subproject = subproject('cpputest')
+cpputest_dep = cpputest_subproject.get_variable('cpputest_dep')
+
+#endregion TEST_DEPENDENCIES
 
 #region FLAGS
 
@@ -30,30 +39,43 @@ test_compiler_flags = native_cpp_compiler.get_supported_arguments(
 #				These do not go in a library. They are explicitly included in the test runner
 #	MOCKS_SRC_FILES - Specific mock source files to build into the unit test runner
 #				These do not go in a library. They are explicitly included in the test runner
+
+app_src_dirs = []
+
+app_src_files = files()
+
 test_include_dirs = []
 
-# test_src_dirs = []
+test_src_dirs = []
 
 test_src_files = files(
 	'all_tests.cpp',
     'sanity_check.cpp',
 )
 
-#endregion SOURCES
+# Create as an array initially for array operations not possible with
+# include_directories().
+#
+all_test_inc_dirs_arr = [
 
-#region DEPENDENCIES
+]
 
-# Include the CppUTest subproject to get cpputest_dep.
+all_test_src_files = [
+	app_src_files,
+    test_src_files
+]
+
+# Create include dirs object with full list of includes.
 # 
-cpputest_subproject = subproject('cpputest')
-cpputest_dep = cpputest_subproject.get_variable('cpputest_dep')
+all_test_inc_dirs = include_directories(all_test_inc_dirs_arr)
 
-#endregion DEPENDENCIES
+#endregion SOURCES
 
 #region EXECUTABLES
 
 tests_exe = executable(test_executable_name,
-	test_files,
+	all_test_src_files,
+	include_directories: all_test_inc_dirs,
 	dependencies: cpputest_dep,
 	link_args: [],
 	cpp_args: test_compiler_flags,
