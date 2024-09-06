@@ -4,6 +4,7 @@ examples/ti/lp-f28379d/bme280/build-systems
 
 # Generated.
 **/docs/doxygen/**/*.*
+!**/docs/doxygen/.gitkeep
 
 # Dependencies auto-downloaded / compiled by Meson.
 # Ignore everything in the subprojects directory except wrap files.
