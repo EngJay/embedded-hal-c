@@ -7,4 +7,12 @@
  *
  * @copyright Copyright (c) 2024
  */
+#include <stdio.h> // For printf().
+#include <stdlib.h> // For EXIT_SUCCESS.
 
+int main()
+{
+    printf("Hello World!\n");
+
+    return EXIT_SUCCESS;
+}

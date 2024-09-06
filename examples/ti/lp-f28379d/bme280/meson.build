@@ -290,10 +290,6 @@ subdir('build-systems/meson/compiler/check-and-apply-flags')
 
 #region BUILD SUPPORT
 
-# Provides support for unit testing.
-#
-# subdir('meson/test/cmocka')
-
 # Provides the commands for conversion of .elf to .hex and .bin.
 #
 subdir('build-systems/meson/objcopy')
@@ -403,7 +399,7 @@ clangtidy_files = [
 # implementation for specific hardware. The specific variant sources that
 # provide appropriate implementations are included based on the cross string
 # provided to Meson.
-# subdir('src')
+subdir('src')
 
 # Including the specific variant of sources based on the cross argument string.
 #
