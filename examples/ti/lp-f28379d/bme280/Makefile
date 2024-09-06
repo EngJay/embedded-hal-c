@@ -223,12 +223,12 @@ default: | $(CONFIGURED_BUILD_DEP)
 
 .PHONY: test
 test: | $(CONFIGURED_TESTS_BUILD_DEP)
-	$(Q)ninja -C $(BUILD_DIR)/$(TESTS_BUILD_DIR) tests
+	$(Q)NATIVE=gcc-14 ninja -C $(BUILD_DIR)/$(TESTS_BUILD_DIR) tests
 
 .PHONY: test-coverage
 test-coverage: | $(CONFIGURED_TESTS_BUILD_DEP)
-	$(Q)ninja -C $(BUILD_DIR)/$(TESTS_BUILD_DIR) tests
-	$(Q) ninja -C $(BUILD_DIR)/$(TESTS_BUILD_DIR) coverage
+	$(Q)NATIVE=gcc-14 ninja -C $(BUILD_DIR)/$(TESTS_BUILD_DIR) tests
+	$(Q)NATIVE=gcc-14 ninja -C $(BUILD_DIR)/$(TESTS_BUILD_DIR) coverage
 
 .PHONY: docs
 docs: | $(CONFIGURED_BUILD_DEP)
