@@ -30,10 +30,8 @@ project(
         'optimization=2',
         # `build.*` options affect `native: true targets`,
         # plain options affect `native: false` targets.
-        'c_std=c11',
-        'build.c_std=c11',
-        'cpp_std=c++11',
-        'build.cpp_std=c++11',
+        'c_std=c99',
+        'build.c_std=c99',
     ],
     meson_version: '>=1.1.0',
     version: '0.1.0',
@@ -52,7 +50,7 @@ endif
 
 #region BUILD DEPENDENCIES
 
-# Include the Embedded HAL for C subproject to get embedded_hal_c_dep.
+# Include the Embedded HAL for C subproject to get embedded_hal_c_includes.
 # 
 # Embedded HAL for C provides standardized interfaces for common components of
 # embedded systems. This dependency provides only the interfaces.
@@ -61,6 +59,14 @@ endif
 # 
 embedded_hal_c_subproject = subproject('embedded-hal-c')
 embedded_hal_c_includes = embedded_hal_c_subproject.get_variable('embedded_hal_c_includes')
+
+# Include the C2000Ware Core SDK subproject to get c2000ware_path.
+# 
+# This dependency provides only a path to the SDK since it's meant to be
+# included on a file-by-file basis.
+# 
+c2000ware_subproject = subproject('c2000ware-core-sdk')
+c2000ware_path = c2000ware_subproject.get_variable('c2000ware_path')
 
 #endregion BUILD DEPENDENCIES
 
@@ -71,6 +77,13 @@ board = meson.get_external_property('board', 'native', native: false)
 os = meson.get_external_property('os', 'native', native: false)
 compiler = meson.get_external_property('compiler', 'gcc-14', native: false)
 lang = meson.get_external_property('language', 'c', native: false)
+
+vendor == 'ti'
+board = 'lp-f28379d'
+os = 'none'
+compiler = 'ti-c2000-cgt'
+lang = 'c'
+lang_ver = '99'
 
 # Pick up common compiler variables.
 #
@@ -83,7 +96,17 @@ lang = meson.get_external_property('language', 'c', native: false)
 # directly to the build if the compiler supports them. The flags are listed in
 # the console output during build configuration.
 #
-subdir('build-systems/meson/compiler')
+# subdir('build-systems/meson/compiler')
+
+# Override base desired flags.
+# 
+# TI C2000 is too different, conflicting flags cause build issues.
+# 
+desired_common_warning_flags = []
+desired_common_compile_flags = []
+if meson.is_subproject() == false
+	desired_common_compile_flags += desired_common_warning_flags
+endif
 
 # Pick-up C language module.
 #
@@ -119,7 +142,7 @@ subdir('build-systems/meson/compiler/c')
 #   - desired_native_cpp_compile_flags
 #   - l_flags (overridable defaults)
 #
-subdir('build-systems/meson/compiler/cpp')
+# subdir('build-systems/meson/compiler/cpp')
 
 # Create linker-related arrays.
 #
@@ -157,15 +180,15 @@ endif
 
 # Enables SEGGER SystemView support.
 #
-segger_systemview_is_enabled = get_option('enable-segger-systemview')
-if segger_systemview_is_enabled
-    add_project_arguments('-DSEGGER_SYSTEMVIEW_ENABLED', language: ['c', 'cpp'])
-    add_project_arguments(
-        '-DSEGGER_SYSTEMVIEW_ENABLED',
-        language: ['c', 'cpp'],
-        native: true,
-    )
-endif
+# segger_systemview_is_enabled = get_option('enable-segger-systemview')
+# if segger_systemview_is_enabled
+#     add_project_arguments('-DSEGGER_SYSTEMVIEW_ENABLED', language: ['c', 'cpp'])
+#     add_project_arguments(
+#         '-DSEGGER_SYSTEMVIEW_ENABLED',
+#         language: ['c', 'cpp'],
+#         native: true,
+#     )
+# endif
 
 # Enables the UART logging sink.
 #
@@ -178,40 +201,46 @@ endif
 
 # Disables compiler builtins.
 #
-if get_option('disable-builtins')
-    desired_c_compile_flags += '-fno-builtin'
-endif
+# if get_option('disable-builtins')
+#     desired_c_compile_flags += '-fno-builtin'
+# endif
 
 # Disables the built-in stack protection.
 #
-if get_option('disable-stack-protection')
-    desired_c_compile_flags += '-fno-stack-protector'
-endif
+# if get_option('disable-stack-protection')
+#     desired_c_compile_flags += '-fno-stack-protector'
+# endif
 
 # Enables pedantic compiler warnings.
 #
-if get_option('enable-pedantic')
-    desired_c_compile_flags += '-pedantic'
-else
-    desired_c_compile_flags += '-Wno-pedantic'
-endif
+# if get_option('enable-pedantic')
+#     desired_c_compile_flags += '-pedantic'
+# else
+#     desired_c_compile_flags += '-Wno-pedantic'
+# endif
 
 # Enables pedantic compiler errors.
 #
-if get_option('enable-pedantic-error')
-    desired_c_compile_flags += '-pedantic-error'
-endif
+# if get_option('enable-pedantic-error')
+#     desired_c_compile_flags += '-pedantic-error'
+# endif
 
-# Add additonal project-specific C compiler flags.
+# OVERRIDE project-specific C compiler flags.
 #
 # NOTE: desired_c_compile_flags is provided by subdir('build-systems/meson/compiler/c').
 #
-# desired_c_compile_flags += [
-#     '-MMD',
-#     '-MP',
-#     '--specs=nosys.specs',
-#     '--specs=nano.specs',
-# ]
+desired_c_compile_flags = [
+    '--cla_support=cla1',
+    '--float_support=fpu32',
+    '--tmu_support=tmu0',
+    '--vcu_support=vcu2',
+    '--diag_suppress=10063',
+    '--diag_warning=225',
+    '--diag_wrap=off',
+    '--display_error_number',
+    '--abi=eabi',
+    '--define=F2837xD'
+]
 
 # Include support for generating map file linker flag.
 #
@@ -224,6 +253,37 @@ subdir('build-systems/meson/linker/linker-map')
 #
 # NOTE: board is provided by the board cross file that was specified.
 #
+if 'lp-f28379d' == board
+
+    # Add board-specific compiler flags.
+    # 
+    desired_c_compile_flags += [
+        '--define=CPU1'
+    ]
+
+    # Add board-specific linker flags.
+    #
+    # linker_script_path = meson.project_source_root() / 'src' / vendor / board / os / compiler / lang + c_language_ver / 'bsp/st/nucleo-f767zi/linker_scripts/STM32F767ZITX_FLASH.ld'
+    linker_script_path = ''
+    c_l_flags += [
+        # '-T' + linker_script_path, map_file.format('example-i2c-ti-f28379d-bme280'), # The map file will be written to the root of the build directory.
+        '-mmain.map',
+        '--heap_size=0x200',
+        '--stack_size=0x3F8',
+        '--warn_sections',
+        '-i/root/ti/cgt/ti-cgt-c2000_22.6.1.LTS/lib',
+        '-i/root/ti/cgt/ti-cgt-c2000_22.6.1.LTS/include',
+        '--reread_libs',
+        '--define=RAM',
+        '--diag_wrap=off',
+        '--display_error_number',
+        '--xml_link_info=example-i2c-ti-f28379d-bme280_linkInfo.xml',
+        '--entry_point=code_start',
+        '--rom_model',
+    ]
+endif
+# 
+# 
 # if board == 'nucleo-f767zi'
 #     desired_c_compile_flags += [
 #         '-DSTM32F767xx',
@@ -266,18 +326,6 @@ compile_settings_list = [
         'lang': 'c',
         'compiler': native_c_compiler,
         'flags': desired_native_c_compile_flags,
-        'isnative': true,
-    },
-    {
-        'lang': 'cpp',
-        'compiler': host_cpp_compiler,
-        'flags': desired_cpp_compile_flags,
-        'isnative': false,
-    },
-    {
-        'lang': 'cpp',
-        'compiler': native_cpp_compiler,
-        'flags': desired_native_cpp_compile_flags,
         'isnative': true,
     },
 ]
