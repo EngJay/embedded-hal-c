@@ -33,7 +33,7 @@ project(
         'c_std=c99',
         'build.c_std=c99',
     ],
-    meson_version: '>=1.1.0',
+    meson_version: '>=1.4.0',
     version: '0.1.0',
 )
 
@@ -66,7 +66,12 @@ embedded_hal_c_includes = embedded_hal_c_subproject.get_variable('embedded_hal_c
 # included on a file-by-file basis.
 # 
 c2000ware_subproject = subproject('c2000ware-core-sdk')
-c2000ware_path = c2000ware_subproject.get_variable('c2000ware_path')
+f2837xd_driverlib_include = c2000ware_subproject.get_variable('f2837xd_driverlib_include')
+if get_option('debug')
+    f2837xd_driverlib = c2000ware_subproject.get_variable('f2837xd_driverlib_debug_lib')
+else
+    f2837xd_driverlib = c2000ware_subproject.get_variable('f2837xd_driverlib_release_lib')
+endif
 
 #endregion BUILD DEPENDENCIES
 
