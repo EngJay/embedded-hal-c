@@ -18,7 +18,7 @@ typedef uint16_t EHC_I2C_ten_bit_address;
 
 typedef struct EHC_I2C EHC_I2C;
 
-typedef enum EHC_I2C_ReturnCode
+typedef enum
 {
     Ok = 0,
     I2cErrorBus,
@@ -27,7 +27,7 @@ typedef enum EHC_I2C_ReturnCode
     I2cOverrun,
     I2cOther,
     NullPointer
-}
+} EHC_I2C_ReturnCode;
 
     // Buffer to receive to.
     //
