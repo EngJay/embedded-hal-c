@@ -3,6 +3,8 @@
 build-systems
 
 # Generated.
+build/
+build_make/
 **/docs/doxygen/**/*.*
 
 # Dependencies auto-downloaded / compiled by Meson.
