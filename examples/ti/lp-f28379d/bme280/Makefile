@@ -1,341 +1,446 @@
 ##
-# Meson Adapter Makefile
-#
-# An adapter for enabling Meson builds for targets that are not able to be
-# supported by the Meson build system. Meson has a rigid structure to the format
-# and order of arguments generated for linking that prevents the linking command
-# for some code genereration tools from being being generated properly.
-# TODO explain what this Makefile provides.
-
+# @file Makefile
+# @brief Standardized Makefile shim for Meson builds.
+# 
 # Usage
+# 
+# make [OPTIONS] <target>
+#   Options:
+#     > MESON Override meson tool - useful for testing meson prereleases and forks.
+#     > VERBOSE Show verbose output for Make rules. Default: 0. Enable with 1.
+#     > BUILD_DIR Directory for build results. Default: build.
+#     > OPTIONS Configuration options to pass to a build. Default: empty.
+#     > LTO Enable LTO builds. Default: 0. Enable with 1.
+#     > DEBUG Enable a debug build. Default: 0 (release). Enable with 1.
+#     > CROSS Enable a Cross-compilation build. Default is arm:cortex-m7-hardfloat-sp.
+#          - Example: make CROSS=arm:cortex-m7-hardfloat-sp
+#     > NATIVE Supply an alternative native toolchain by name.
+#          - Example: make NATIVE=gcc-9
+#          - Additional files can be layered by adding additional
+#            args separated by ':'
+#          - Example: make NATIVE=gcc-9:gcc-gold
+#     > SANITIZER Compile with support for a Clang/GCC Sanitizer.
+#          Options are: none (default), address, thread, undefined, memory,
+#          and address,undefined' as a combined option
+# Build Targets
+#   default: build all default targets ninja knows about
+#   test: build and run unit test programs
+#   test-coverage: build and run unit test programs with coverage reporting
+#   package: build the project, generate docs, and create a release package
+#   clean: clean build artifacts, keeping build files in place
+#   distclean: remove the configured build output directory
+#   reconfig: reconfigure an existing build output folder with new settings
+# Documentation Targets
+#   docs: generate documentation
+#   docs-ci: generate documentation for use in CI process for coverage reporting
+#   docs-coverage: run documentation comment coverage and generate a report
+#   docs-coverage-browsable: run documentation comment coverage and generate a browsable report
+# Code Formating Targets
+#   format: run clang-format on codebase
+#   format-patch: generate a patch file with formatting changes
+# Static Analysis Targets
+#   cppcheck: run cppcheck
+#   cppcheck-report: run cppcheck and generate a report
+#   complexity: run complexity analysis with lizard, only print violations
+#   complexity-full: run complexity analysis with lizard, print full results
+#   complexity-report: run complexity analysis with lizard, generate a report
+#   dups: run duplicates detection
+#   dups-report: run duplicates detection, generate a report
+#   dups-report-browsable: run duplicates detection, generate a browsable report
+#   sloccount: run line of code and effort analysis
+#   sloccount-full: run line of code and effort analysis, with results for every file
+#   sloccount-report: run line of code and effort analysis + save to file for CI
+#   sloccount-full-report: run line of code and effort analysis, with results for every file
+#   tasks: run in-code task detection
+#   tasks-report: run in-code task detection, generate a report
+#   tidy: run clang-tidy linter
+#   tidy-fix: run clang-tidy linter and apply fixes
+#   tidy-report: run clang-tidy linter and generate a report
+#   vale: lint project documentation against configured style guide
+#   vale-report: lint project documentation and generate a report
+# Verification Targets
+#   frama-c-wp: run frama-c with the WP and RTE plugins
+#   frama-c-wp-report: run frama-c with the WP and RTE plugins and generate a report
+#   frama-c-eva: run frama-c with the Eva plugin
+#   frama-c-eva-report: run frama-c with the Eva plugin and generate a report
+# 
+# @author Jason Scott <reachme@jasonpscott.com>
+# @date 2024-09-02
+# 
+
+# Enables verbosity for this Makefile.
 #
-# 1. Set OUTPUT_NAME to the P/N or desired executable name. 
-# 2. Ensure the correct TI CGT version is being used.
-# 3. Verify / adjust compiler flags: CL2000_FLAGS.
-# 4. Verify / adjust linker flags: LINKER_FLAGS.
-# 5. Set / unset preprocessor macros: DEFINES & UNDEFINES.
-# 6. Set all sources, command files, and libraries:
-#		CMD_SRCS: 		.cmd command files to be linked in.
-# 		LIB_SRCS: 		.lib library files to be linked in.
-# 		ASM_SRCS: 		.asm source files to be compiled in.
-# 		C_SRCS:   		.c source files to be compiled in.
-# 		LINKED_LIBS: 	libs that require an -l flag with the linker.
-# 		INC_DIRS: 		include dirs; -I is automatically prepended.
-# 7. Make desired adjustments to the additonal build targets for tasks / tools.
-# 
-# Environment Variables Required
-# 
-# TI_COMPILERS_DIR path to the dir that contains the root dir of TI CGT installs
-# 
-
-# Part number or executable name.
-# 
-OUTPUT_NAME ?= example-i2c-ti-f28379d-bme280
-
-# Root of the project.
-# 
-PROJECT_HOME_DIR = .
-
-# TI Code Generation tools to use.
-# 
-CG_TOOLS_VER ?= 22.6.1.LTS
-CG_TOOL_ROOT := $(TI_COMPILERS_DIR)/ti-cgt-c2000_$(CG_TOOLS_VER)
-
-# Set delete commands.
-# 
-RM := rm -rf
-RMDIR := rm -rf
-
-# The following options can be controlled on the command line by supplying a 
-# defintion, e.g.: make BUILDRESULTS=output/ DEBUG=1.
+# Set this to see all commands and output.
 #
-# BUILDRESULTS: the workibng directory in which to build outputs from sources.
-# DEBUG: if non-zero, sets the build to a debug build. Default to release build.
-# XML_LINK_INFO: path and name of the link info build artifact.
-# DATEOVERRIDE: if non-zero, the value is used to replace BUILD_DATE, which 
-#  				allows a part build to be more accurately reproduced. Default to
-# 				the current date and time returned by the date shell command.
-#
-# Defaults:
-#	BUILDRESULTS:  build
-# 	DEBUG:         0
-#	XML_LINK_INFO: $(BUILDRESULTS)/$(OUTPUT_NAME)_linkInfo.xml
-#	DATEOVERRIDE:  0
-# 
-BUILDRESULTS ?= build_make
-DEBUG ?= 0
-XML_LINK_INFO ?= $(BUILDRESULTS)/$(OUTPUT_NAME)_linkInfo.xml
-DATEOVERRIDE ?= 0
+VERBOSE ?= 0
 
-#region ITEMS_VARS
-
-# Outputs.
-# 
-EXE_OUTPUTS += \
-	$(BUILDRESULTS)/$(OUTPUT_NAME).out
-BIN_OUTPUTS += \
-	$(BUILDRESULTS)/$(OUTPUT_NAME).hex
-
-# Dependencies
-# 
-# C2000ware
-# Embedded HAL C
-# 
-C2000WARE_ROOT := subprojects/c2000ware-core-sdk
-EMBEDDED_HAL_C := subprojects/embedded-hal-c
-
-# All project sources and include dirs must be listed here.
-#
-# CMD_SRCS: 	.cmd command files to be linked in.
-# LIB_SRCS: 	.lib library files to be linked in.
-# ASM_SRCS: 	.asm source files to be compiled in.
-# C_SRCS:   	.c source files to be compiled in.
-# LINKED_LIBS: 	libs that require an -l flag with the linker.
-# INC_DIRS: 	include dirs for search path, prepended with -I.
-# 
-CMD_SRCS := \
-	src/2837xD_RAM_lnk_cpu1.cmd
-
-LIB_SRCS := \
-
-ASM_SRCS := \
-	src/device/F2837xD_CodeStartBranch.asm
-C_SRCS := \
-	src/device/device.c \
-	src/i2c_ex3_external_loopback.c
-LINKED_LIBS := \
-	$(CG_TOOL_ROOT)/lib/libc.a
-
-# Set all include dirs, then add -I flag for TI-CGT C2000.
-# 
-INC_DIRS := \
-	$(CG_TOOL_ROOT)/include \
-	$(CG_TOOL_ROOT)/lib \
-	src/device \
-	$(C2000WARE_ROOT)/driverlib/f2837xd/driverlib \
-	$(EMBEDDED_HAL_C)/inc
-INC_FLAGS := $(addprefix -I,$(INC_DIRS))
-
-# Generate lists of file names from sources.
-#
-# %.c -> $(BUILDRESULTS)/%.d
-# %.asm -> $(BUILDRESULTS)/%.d
-# %.c + %.asm -> $(BUILDRESULTS)/%.obj
-# % -> -l%
-# 
-ASM_DEPS := $(ASM_SRCS:%.asm=$(BUILDRESULTS)/%.d)
-C_DEPS := $(C_SRCS:%.c=$(BUILDRESULTS)/%.d)
-OBJS := $(C_SRCS:%.c=$(BUILDRESULTS)/%.obj) $(ASM_SRCS:%.asm=$(BUILDRESULTS)/%.obj)
-
-# Add -l flag for TI-CGT C2000 linker.
-# 
-FORMATTED_LINKED_LIBS := $(LINKED_LIBS:%=-l%)
-
-# Assemble all items in order for the linker.
-# 
-ORDERED_OBJS += \
-	$(OBJS) \
-	$(CMD_SRCS) \
-	$(LIB_SRCS) \
-	$(FORMATTED_LINKED_LIBS)
-
-#endregion ITEMS_VARS
-
-#region FLAGS
-
-# Flags set with DEBUG setting.
-#
-# Defaults to release, which is just -O3.
-# DEBUG=1 runs a debug build, which is -g -O2.
-ifeq ($(DEBUG),1)
-# Reduce optimization, too.
-CL2000_FLAGS += -g -O2 -DDEBUG
-LIB_SRCS += $(C2000WARE_ROOT)/driverlib/f2837xd/driverlib/ccs/Debug/driverlib_eabi.lib
+ifeq ($(VERBOSE),1)
+export Q :=
+export VERBOSE := 1
 else
-CL2000_FLAGS += -O3 -DRELEASE -DNDEBUG
-LIB_SRCS += $(C2000WARE_ROOT)/driverlib/f2837xd/driverlib/ccs/Release/driverlib_eabi.lib
+export Q := @
+export VERBOSE := 0
 endif
 
-# Flags.
+# The meson executable to use.
 #
-# CL2000_FLAGS: compiler flags for .c and .asm.
-# LINKER_FLAGS: linker flags included after the -z flag.
+# This can be changed to try out pre-releases or other versions of Meson.
+#
+# MESON ?= python3 /Users/ne10/Projects/meson/meson.py
+# MESON ?= python3 /meson/meson.py
+MESON ?= meson
+
+# Build directory.
+#
+# The directory to set as the Meson build directory.
+#
+BUILD_DIR ?= build
+
+# Tests build directory.
+#
+# The directory to set as the Meson build directory for the tests build.
+#
+TESTS_BUILD_DIR ?= testsbuild
+
+# Default location of the ninja build file.
+#
+# This is used in a Make rule below for running meson if the file needs to be
+# created.
+#
+CONFIGURED_BUILD_DEP = $(BUILD_DIR)/build.ninja
+
+# Location of the test coverage ninja build file.
 # 
-CL2000_FLAGS += \
-	-v28 \
-	-ml \
-	-mt \
-    --cla_support=cla1 \
-    --float_support=fpu32 \
-    --tmu_support=tmu0 \
-    --vcu_support=vcu2 \
-    --diag_suppress=10063 \
-    --diag_warning=225 \
-    --diag_wrap=off \
-    --display_error_number \
-    --abi=eabi \
-	--advice:performance=all
-LINKER_FLAGS := \
-	-m$(BUILDRESULTS)/$(OUTPUT_NAME).map \
-	--heap_size=0x200 \
-	--stack_size=0x3F8 \
-	--warn_sections \
-	-i$(CG_TOOL_ROOT)/lib \
-	-i$(CG_TOOL_ROOT)/include \
-	--reread_libs \
-	--diag_wrap=off \
-	--display_error_number \
-	--xml_link_info="$(XML_LINK_INFO)" \
-	--entry_point=code_start \
-	--rom_model
+# This is used in a Make rule below for running meson if the file needs to be
+# created.
+#  
+CONFIGURED_TESTS_BUILD_DEP = $(BUILD_DIR)/$(TESTS_BUILD_DIR)/build.ninja
 
-# Predefined macro options.
+# Provide additional Meson command options.
+# 
+# See the Meson commands reference for the command being run:
+# https://mesonbuild.com/Commands.html
 #
-# DEFINES: 		each will be added with a -D flag.
-# UNDEFINES: 	each will be added with a -U flag.
-DEFINES := \
-	RAM \
-	F2837xD \
-	CPU1
-DEFINE_FLAGS := $(addprefix -D,$(DEFINES))
-UNDEFINES := \
+# Example:
+# 
+# 	> make OPTIONS="-Denable-pedantic=true"
+# 
+OPTIONS ?=
 
-UNDEFINE_FLAGS := $(addprefix -U,$(UNDEFINES))
-
-# Store date.
+# Enables link-time optimization.
 #
-# BUILD_DATE: defaults to current date as returned by the date shell command in 
-# %d/%m/%Y, %H:%M format.
-# Setting DATEOVERRIDE to a non-zero value will use DATEOVERRIDE as BUILD_DATE 
-# instead. This supports deterministic builds, which allows a past build to be more 
-# accurately reproduced.
-# ifeq ($(DATEOVERRIDE),0)
-# BUILD_DATE := $(shell date -u +"%d/%m/%Y, %H:%M")
-# else
-# BUILD_DATE := $(DATEOVERRIDE)
-# endif
+LTO ?= 0
 
-# Store build user and hostname of machine.
-# BUILD_MACHINE := $(shell echo `whoami`@`hostname`)
-
-# Generate build tag and build info.
-# REF: https://embeddedartistry.com/blog/2016/12/21/giving-your-firmware-build-a-version/
-# version := $(subst -, ,$(shell git describe --long --dirty --tags))
-# COMMIT := $(strip $(word 3, $(version)))
-# COMMITS_PAST := $(strip $(word 2, $(version)))
-# DIRTY := $(strip $(word 4, $(version)))
-# ifneq ($(COMMITS_PAST), 0)
-# 	BUILD_INFO_COMMITS := "."$(COMMITS_PAST)
-# endif
-# ifneq ($(DIRTY),)
-# 	BUILD_INFO_DIRTY :="+"
-# endif
-# export BUILD_TAG :=$(strip $(word 1, $(version)))
-# export BUILD_INFO := $(COMMIT)$(BUILD_INFO_COMMITS)$(BUILD_INFO_DIRTY)
-
-# Build metadata automatically included.
+# Cross-compile target.
 #
-# _VERSION_BUILD_DATE_: 	Time/date of build
-# _VERSION_BUILD_MACHINE_: 	Machine that built it (USER@HOST)
-# _VERSION_TAG: 			last git tag number	
-# _VERSION_BUILD_:			(commit).(num commits past last tag)(+ if dirty)
-# DEFINE_FLAGS := \
-# 	$(DEFINE_FLAGS) \
-# 	-D_VERSION_BUILD_DATE_=\""$(BUILD_DATE)"\" \
-# 	-D_VERSION_BUILD_MACHINE_=\""$(BUILD_MACHINE)"\" \
-# 	-D_VERSION_TAG_=\"$(BUILD_TAG)\" \
-# 	-D_VERSION_BUILD_INFO_=\"$(BUILD_INFO)\"
+# Cross files can be layered by providing a : delimited list. For
+# example, arm:cortex-m7-hardfloat-sp will add the arm.txt and the 
+# cortex-m7-hardfloat-sp.txt cross files in the order they appear in the list.
+# 
+# Options: 	See the supported cross targets in the main README.
+#
+CROSS ?=
 
-#endregion FLAGS
+# Sets the native compile target.
+#
+# Options: 	See the directory of native files in the build-systems repo.
+#
+NATIVE ?=
 
-#region COMPILATION_RULES
+# Default to native gcc-14 build if neither CROSS nor NATIVE is set.
+# 
+ifeq ($(CROSS),)
+  ifeq ($(NATIVE),)
+    NATIVE := gcc-14
+  endif
+endif
 
-# Rule for all .c source files.
-$(BUILDRESULTS)/%.obj: %.c
-	mkdir -p $(@D)
-	@echo 'Building file: "$<"'
-	@echo 'Invoking: C2000 Compiler'
-	$(CG_TOOL_ROOT)/bin/cl2000 $(CL2000_FLAGS) $(INC_FLAGS) $(DEFINE_FLAGS) $(UNDEFINE_FLAGS) --preproc_with_compile --preproc_dependency=$(@D)/$(basename $(<F)).d_raw --obj_directory=$(@D) $(shell echo $<)
-	@echo 'Finished building: "$<"'
-	@echo ' '
+# Enables debug build. 
+#
+# When set to 1, the buildtype is set to debug, debug = true, optimization = g,
+# and the appropriate macros are defined.
+#
+DEBUG ?= 0
 
-# Rule for all .asm source files.
-$(BUILDRESULTS)/%.obj: %.asm
-	mkdir -p $(@D)
-	@echo 'Building file: "$<"'
-	@echo 'Invoking: C2000 Compiler'
-	$(CG_TOOL_ROOT)/bin/cl2000 $(CL2000_FLAGS) $(INC_FLAGS) $(DEFINE_FLAGS) $(UNDEFINE_FLAGS) --preproc_with_compile --preproc_dependency=$(@D)/$(basename $(<F)).d_raw --obj_directory=$(@D) $(shell echo $<)
-	@echo 'Finished building: "$<"'
-	@echo ' '
+# Enables SEGGER SystemView.
+#
+# When set to 1, the enable-segger-systemview option is set to true, which swaps
+# in patched files and sets the macro used to include SystemView in the sources.
+#
+SYSTEMVIEW ?= 0
 
-#endregion COMPILATION_RULES
+# Set to use a santizer.
+#
+# Options: 	none (default)
+# 			address
+# 			thread
+# 			undefined
+# 			memory
+#			address,undefined as a combined option
+# 
+# NOTE: Sanitizers are not supported by arm-none-eabi-gcc.
+# 
+SANITIZER ?= none
 
-#region ALL_TARGET
+# Options internal to Meson.
+#
+# This is used to collect the internal options to be passed to Meson.
+#
+INTERNAL_OPTIONS =
 
-# Paralellize build.
-NPROCS = $(shell grep -c 'processor' /proc/cpuinfo)
-MAKEFLAGS += -j$(NPROCS)
+ifeq ($(LTO),1)
+	INTERNAL_OPTIONS += -Db_lto=true -Ddisable-builtins=true
+endif
 
-# All Target -- builds .out and .hex files.
-all: $(OBJS) $(CMD_SRCS) $(LIB_SRCS) $(LINKED_LIBS)
-	@$(MAKE) $(BUILDRESULTS)/$(OUTPUT_NAME).out
-	@$(MAKE) --no-print-directory -Onone $(BUILDRESULTS)/$(OUTPUT_NAME).hex
+ifneq ($(CROSS),)
+	# Split into two strings, first is arch, second is chip.
+	CROSS_2 := $(subst :, ,$(CROSS))
+	INTERNAL_OPTIONS += $(foreach FILE,$(CROSS_2),--cross-file=build-systems/meson/cross/$(FILE).txt)
+endif
 
-$(BUILDRESULTS)/$(OUTPUT_NAME).out: $(OBJS) $(CMD_SRCS) $(LIB_SRCS) $(LINKED_LIBS)
-	mkdir -p $(@D)
-	@echo 'Building target: "$@"'
-	@echo 'Invoking: C2000 Linker'
-	$(CG_TOOL_ROOT)/bin/cl2000 $(CL2000_FLAGS) $(DEFINE_FLAGS) $(UNDEFINE_FLAGS) -z $(LINKER_FLAGS) -o $(BUILDRESULTS)/$(OUTPUT_NAME).out $(ORDERED_OBJS) $(LINKED_LIBS)
-	@echo 'Finished building target: "$@"'
-	@echo ' '
+# TODO Figure out what to do with this, #18.
+ifneq ($(NATIVE),)
+	# Split into words delimited by :
+	NATIVE_2 := $(subst :, ,$(NATIVE))
+	INTERNAL_OPTIONS += $(foreach FILE,$(NATIVE_2),--native-file=build-systems/meson/native/$(FILE).txt)
+endif
 
-$(BUILDRESULTS)/$(OUTPUT_NAME).hex: $(EXE_OUTPUTS)
-	mkdir -p $(@D)
-	@echo 'Building secondary target: "$@"'
-	@echo 'Invoking: C2000 Hex Utility'
-	$(CG_TOOL_ROOT)/bin/hex2000 -i -romwidth 16 -o $(BUILDRESULTS)/$(OUTPUT_NAME).hex $(EXE_OUTPUTS)
-	@echo 'Finished building secondary target: "$@"'
-	@echo ' '
+ifeq ($(DEBUG),1)
+	INTERNAL_OPTIONS += -Ddebug=true -Doptimization=g
+endif
 
-# TODO Add rule for creating enc file.
+ifeq ($(SYSTEMVIEW),1)
+	INTERNAL_OPTIONS += -Denable-segger-systemview=true
+endif
 
-#endregion ALL_TARGET
+ifneq ($(SANITIZER),none)
+	INTERNAL_OPTIONS += -Db_sanitize=$(SANITIZER) -Db_lundef=false
+endif
 
-#region ADDITIONAL_TARGETS
+all: default
 
-.PHONY: version
-version:
-	@echo "BUILD_DATE:    $(BUILD_DATE)"
-	@echo "BUILD_MACHINE: $(BUILD_MACHINE)"
-	@echo "BUILD_TAG:     $(BUILD_TAG)"
-	@echo "BUILD_INFO:    $(BUILD_INFO)"
-	@echo ' '
-	@echo 'Finished running version target.'
-	@echo ' '
+.PHONY: default
+default: | $(CONFIGURED_BUILD_DEP)
+	ninja -C $(BUILD_DIR) --verbose
+
+.PHONY: test
+test: | $(CONFIGURED_TESTS_BUILD_DEP)
+	$(Q)NATIVE=gcc-14 ninja -C $(BUILD_DIR)/$(TESTS_BUILD_DIR) tests
+
+.PHONY: test-coverage
+test-coverage: | $(CONFIGURED_TESTS_BUILD_DEP)
+	$(Q)NATIVE=gcc-14 ninja -C $(BUILD_DIR)/$(TESTS_BUILD_DIR) tests
+	$(Q)NATIVE=gcc-14 ninja -C $(BUILD_DIR)/$(TESTS_BUILD_DIR) coverage
+
+.PHONY: docs
+docs: | $(CONFIGURED_BUILD_DEP)
+	$(Q)ninja -C $(BUILD_DIR) docs
+
+.PHONY: docs-ci
+docs-ci: | $(CONFIGURED_BUILD_DEP)
+	$(Q)ninja -C $(BUILD_DIR) docs-ci
+
+.PHONY: docs-coverage
+docs-coverage: | $(CONFIGURED_BUILD_DEP)
+	$(Q)ninja -C $(BUILD_DIR) docs-coverage
+
+.PHONY: docs-coverage-browsable
+docs-coverage-browsable: | $(CONFIGURED_BUILD_DEP)
+	$(Q)ninja -C $(BUILD_DIR) docs-coverage-lcov
+	$(Q)ninja -C $(BUILD_DIR) docs-coverage-browsable
+
+.PHONY: package
+package: default docs
+	$(Q)ninja -C $(BUILD_DIR) package
+	$(Q)ninja -C $(BUILD_DIR) package-native
+
+# Manually Reconfigure a target, esp. with new options.
+# 
+.PHONY: reconfig
+reconfig:
+	$(Q) $(MESON) setup $(BUILD_DIR) --reconfigure $(INTERNAL_OPTIONS) $(OPTIONS)
+
+# Runs whenever the build has not been configured successfully.
+# 
+$(CONFIGURED_BUILD_DEP):
+	$(Q) $(MESON) setup $(BUILD_DIR) $(INTERNAL_OPTIONS) $(OPTIONS)
+
+# Runs whenever the test build has not been configured successfully.
+#
+# A second test-specific build nested in the regular build. This allows
+# test-specific flags and build settings to be enforced with configuring or
+# rebuilding the regular build.
+#
+$(CONFIGURED_TESTS_BUILD_DEP): | $(CONFIGURED_BUILD_DEP)
+	$(eval INTERNAL_OPTIONS += -Ddebug=true -Doptimization=0 -Db_coverage=true)
+	$(Q) $(MESON) setup $(BUILD_DIR)/$(TESTS_BUILD_DIR) $(INTERNAL_OPTIONS) $(OPTIONS)
+
+.PHONY: cppcheck
+cppcheck: | $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) cppcheck
+
+.PHONY: cppcheck-report
+cppcheck-report: | $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) cppcheck-report
+
+.PHONY: complexity
+complexity: | $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) complexity
+
+.PHONY: complexity-report
+complexity-report: | $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) complexity-report
+
+.PHONY: complexity-full
+complexity-full: | $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) complexity-full
+
+.PHONY: dups
+dups: | $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) dups
+
+.PHONY: dups-report
+dups-report: | $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) dups-report
+
+.PHONY: dups-report-browsable
+dups-report-browsable: | $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) dups-report-browsable
+
+.PHONY: tidy
+tidy: $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) clang-tidy
+
+.PHONY: tidy-fix
+tidy-fix: $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) clang-tidy-fix
+
+.PHONY: tidy-report
+tidy-report: $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) clang-tidy-report
+
+.PHONY: sloccount
+sloccount: $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) sloccount
+
+.PHONY: sloccount-full
+sloccount-full: $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) sloccount-full
+
+.PHONY: sloccount-report
+sloccount-report: $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) sloccount-report
+
+.PHONY: sloccount-full-report
+sloccount-full-report: $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) sloccount-full-report
+
+.PHONY: tasks
+tasks: $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) tasks
+
+.PHONY: tasks-report
+tasks-report: $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) tasks-report
+
+.PHONY: vale
+vale: $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) vale
+
+.PHONY: vale-report
+vale-report: $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) vale-report
+
+.PHONY: frama-c-wp
+frama-c-wp: $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) frama-c-wp
+
+.PHONY: frama-c-wp-report
+frama-c-wp-report: $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) frama-c-wp-report
+
+.PHONY: frama-c-eva
+frama-c-eva: $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) frama-c-eva
+
+.PHONY: frama-c-eva-report
+frama-c-eva-report: $(CONFIGURED_BUILD_DEP)
+	$(Q) ninja -C $(BUILD_DIR) frama-c-eva-report
+
+.PHONY: format
+format: $(CONFIGURED_BUILD_DEP)
+	$(Q)ninja -C $(BUILD_DIR) format
+
+.PHONY : format-patch
+format-patch: $(CONFIGURED_BUILD_DEP)
+	$(Q)ninja -C $(BUILD_DIR) format-patch
 
 .PHONY: clean
 clean:
-	$(RM) $(BUILDRESULTS)
-	@echo ' '
-	@echo 'Finished clean.'
-	@echo ' '
+	$(Q) if [ -d "$(BUILD_DIR)" ]; then ninja -C build clean; fi
+
+.PHONY: distclean
+distclean:
+	$(Q) rm -rf $(BUILD_DIR)
 
 .PHONY : help
 help :
 	@echo "usage: make [OPTIONS] <target>"
 	@echo "  Options:"
-	@echo "    > BUILDRESULTS Directory for build results. Default buildresults."
-	@echo "    > DEBUG Enable a debug build. Default 0 (release). Enable with 1."
-	@echo "    > XML_LINK_INFO: path and name of the link info build artifact."
-	@echo "    > DATEOVERRIDE: if non-zero, the value is used to replace BUILD_DATE,"
-	@echo "        which allows a part build to be more accurately reproduced."
-	@echo "        Defaults to the current date and time returned by the date shell"
-	@echo "        command." 
-	@echo "Targets:"
-	@echo "  default: build all default targets"
-	@echo "  clean: remove build artifacts and configured build output directories"
-	@echo "  Static Analysis:"
-	@echo "    version: prints build metadata"
-	@echo ' '
-
-#endregion ADDITIONAL_TARGETS
+	@echo "    > MESON Override meson tool - useful for testing meson prereleases and forks."
+	@echo "    > VERBOSE Show verbose output for Make rules. Default: 0. Enable with 1."
+	@echo "    > BUILD_DIR Directory for build results. Default: build."
+	@echo "    > OPTIONS Configuration options to pass to a build. Default: empty."
+	@echo "    > LTO Enable LTO builds. Default: 0. Enable with 1."
+	@echo "    > DEBUG Enable a debug build. Default: 0 (release). Enable with 1."
+	@echo "    > CROSS Enable a Cross-compilation build. Default is arm:cortex-m7-hardfloat-sp."
+	@echo "         - Example: make CROSS=arm:cortex-m7-hardfloat-sp"
+	@echo "    > NATIVE Supply an alternative native toolchain by name."
+	@echo "         - Example: make NATIVE=gcc-9"
+	@echo "         - Additional files can be layered by adding additional"
+	@echo "           args separated by ':'"
+	@echo "         - Example: make NATIVE=gcc-9:gcc-gold"
+	@echo "    > SANITIZER Compile with support for a Clang/GCC Sanitizer."
+	@echo "         Options are: none (default), address, thread, undefined, memory,"
+	@echo "         and address,undefined' as a combined option"
+	@echo "Build Targets"
+	@echo "  default: build all default targets ninja knows about"
+	@echo "  test: build and run unit test programs"
+	@echo "  test-coverage: build and run unit test programs with coverage reporting"
+	@echo "  package: build the project, generate docs, and create a release package"
+	@echo "  clean: clean build artifacts, keeping build files in place"
+	@echo "  distclean: remove the configured build output directory"
+	@echo "  reconfig: reconfigure an existing build output folder with new settings"
+	@echo "Documentation Targets"
+	@echo "  docs: generate documentation"
+	@echo "  docs-ci: generate documentation for use in CI process for coverage reporting"
+	@echo "  docs-coverage: run documentation comment coverage and generate a report"
+	@echo "  docs-coverage-browsable: run documentation comment coverage and generate a browsable report"
+	@echo "Code Formating Targets"
+	@echo "  format: run clang-format on codebase"
+	@echo "  format-patch: generate a patch file with formatting changes"
+	@echo "Static Analysis Targets"
+	@echo "  cppcheck: run cppcheck"
+	@echo "  cppcheck-report: run cppcheck and generate a report"
+	@echo "  complexity: run complexity analysis with lizard, only print violations"
+	@echo "  complexity-full: run complexity analysis with lizard, print full results"
+	@echo "  complexity-report: run complexity analysis with lizard, generate a report"
+	@echo "  dups: run duplicates detection"
+	@echo "  dups-report: run duplicates detection, generate a report"
+	@echo "  dups-report-browsable: run duplicates detection, generate a browsable report"
+	@echo "  sloccount: run line of code and effort analysis"
+	@echo "  sloccount-full: run line of code and effort analysis, with results for every file"
+	@echo "  sloccount-report: run line of code and effort analysis + save to file for CI"
+	@echo "  sloccount-full-report: run line of code and effort analysis, with results for every file"
+	@echo "  tasks: run in-code task detection"
+	@echo "  tasks-report: run in-code task detection, generate a report"
+	@echo "  tidy: run clang-tidy linter"
+	@echo "  tidy-fix: run clang-tidy linter and apply fixes"
+	@echo "  tidy-report: run clang-tidy linter and generate a report"
+	@echo "  vale: lint project documentation against configured style guide"
+	@echo "  vale-report: lint project documentation and generate a report"
+	@echo "Verification Targets"
+	@echo "  frama-c-wp: run frama-c with the WP and RTE plugins"
+	@echo "  frama-c-wp-report: run frama-c with the WP and RTE plugins and generate a report"
+	@echo "  frama-c-eva: run frama-c with the Eva plugin"
+	@echo "  frama-c-eva-report: run frama-c with the Eva plugin and generate a report"
