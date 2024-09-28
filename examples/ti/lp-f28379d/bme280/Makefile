@@ -95,7 +95,6 @@ EMBEDDED_HAL_C := $(PROJECT_HOME_DIR)/subprojects/embedded-hal-c
 # 
 CMD_SRCS := \
 	src/2837xD_RAM_lnk_cpu1.cmd
-
 LIB_SRCS := \
 
 ASM_SRCS := \
