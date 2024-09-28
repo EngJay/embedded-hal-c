@@ -239,11 +239,11 @@ UNDEFINE_FLAGS := $(addprefix -U,$(UNDEFINES))
 # _VERSION_BUILD_MACHINE_: 	Machine that built it (USER@HOST)
 # _VERSION_TAG: 			last git tag number	
 # _VERSION_BUILD_:			(commit).(num commits past last tag)(+ if dirty)
-# DEFINE_FLAGS := \
-# 	$(DEFINE_FLAGS) \
-# 	-D_VERSION_BUILD_DATE_=\""$(BUILD_DATE)"\" \
-# 	-D_VERSION_BUILD_MACHINE_=\""$(BUILD_MACHINE)"\" \
-# 	-D_VERSION_TAG_=\"$(BUILD_TAG)\" \
+# DEFINE_FLAGS :=
+# 	$(DEFINE_FLAGS)
+# 	-D_VERSION_BUILD_DATE_=\""$(BUILD_DATE)"\"
+# 	-D_VERSION_BUILD_MACHINE_=\""$(BUILD_MACHINE)"\"
+# 	-D_VERSION_TAG_=\"$(BUILD_TAG)\"
 # 	-D_VERSION_BUILD_INFO_=\"$(BUILD_INFO)\"
 
 #endregion FLAGS

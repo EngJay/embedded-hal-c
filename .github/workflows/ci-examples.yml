@@ -1,3 +1,9 @@
+##
+# GitHub Actions workflow configuraton for the examples for the embedded-hal.
+# 
+# This CI workflow includes a build job that builds the examples using the
+# matrix feature of GitHub Actions.
+# 
 name: CI - Examples
 
 on:
@@ -38,6 +44,9 @@ jobs:
       - name: Create symlinks
         run: |
           ./symlink.sh
+      - name: Run Meson via Makefile shim
+        run: |
+            CROSS=c2000 make -f Makefile.shim
       - name: Build example
         run: |
           make CROSS=${{ matrix.vendor }}:${{ matrix.board }}:${{ matrix.os }}:${{ matrix.lang }}

@@ -45,16 +45,33 @@ all_app_src_files = files(app_src_files)
 
 linker_script = meson.current_source_dir() / '2837xD_RAM_lnk_cpu1.cmd'
 
+make = find_program('make')
+
+# adapter_makefile = meson.project_source_root() / 'Makefile.build'
+
+# run_command(make, '-C', meson.project_source_root(), '--file', 'Makefile.build', check: true)
+
+# infile = 'source_code.txt'
+# outfile = 'example-i2c-ti-f28379d-bme280'
+
+# mytarget = custom_target('build',
+#   output : outfile,
+# #   input : infile,
+#   command : [make],
+# #   install : true,
+# #   install_dir : 'subdir'
+# )
+
+# TODO adopt the meson executable target when Meson can support TI C28x, #3.
+#
+# Meson can't handle the format needed to build TI C28x projects.
+
 # This is faulty because it adds a flag `-lc` at the end of the linker args but
 # the C28x compiler expects it in the form `-llibc.a` and at the very end of the
 # command after the input object files.
 #
 # cc = meson.get_compiler('c')
 # c2000_libc = cc.find_library('c', dirs: ti_c28x_c2000_cgt_dir / 'lib', static: true)
-
-# TODO adopt the meson executable target when Meson can support TI C28x, #3.
-#
-# Meson can't handle the format needed to build TI C28x projects.
 
 # Excutable target for the application.
 #

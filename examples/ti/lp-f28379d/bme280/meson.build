@@ -37,6 +37,12 @@ project(
     version: '0.1.0',
 )
 
+# TI C28x C2000 CGT tools location.
+#
+# ti_c28x_c2000_cgt_dir = '/Applications/ti/ti-cgt-c2000_22.6.1.LTS'
+
+ti_c28x_c2000_cgt_dir = '/root/ti/cgt/ti-cgt-c2000_22.6.1.LTS'
+
 # Check for miniumum required GCC for ARM version.
 #
 if meson.is_cross_build()
@@ -51,20 +57,20 @@ endif
 #region BUILD DEPENDENCIES
 
 # Include the Embedded HAL for C subproject to get embedded_hal_c_includes.
-# 
+#
 # Embedded HAL for C provides standardized interfaces for common components of
 # embedded systems. This dependency provides only the interfaces.
 # Implementations must be provided through the inclusion of an implementation
 # package or in custom sources files locally in the project.
-# 
+#
 embedded_hal_c_subproject = subproject('embedded-hal-c')
 embedded_hal_c_includes = embedded_hal_c_subproject.get_variable('embedded_hal_c_includes')
 
 # Include the C2000Ware Core SDK subproject to get c2000ware_path.
-# 
+#
 # This dependency provides only a path to the SDK since it's meant to be
 # included on a file-by-file basis.
-# 
+#
 c2000ware_subproject = subproject('c2000ware-core-sdk')
 f2837xd_driverlib_include = c2000ware_subproject.get_variable('f2837xd_driverlib_include')
 if get_option('debug')
@@ -86,7 +92,7 @@ lang = meson.get_external_property('language', 'c', native: false)
 vendor == 'ti'
 board = 'lp-f28379d'
 os = 'none'
-compiler = 'ti-c2000-cgt'
+compiler = 'ti-c2000'
 lang = 'c'
 lang_ver = '99'
 
@@ -104,13 +110,13 @@ lang_ver = '99'
 # subdir('build-systems/meson/compiler')
 
 # Override base desired flags.
-# 
+#
 # TI C2000 is too different, conflicting flags cause build issues.
-# 
+#
 desired_common_warning_flags = []
 desired_common_compile_flags = []
 if meson.is_subproject() == false
-	desired_common_compile_flags += desired_common_warning_flags
+    desired_common_compile_flags += desired_common_warning_flags
 endif
 
 # Pick-up C language module.
@@ -183,18 +189,6 @@ endif
 
 # Features to include.
 
-# Enables SEGGER SystemView support.
-#
-# segger_systemview_is_enabled = get_option('enable-segger-systemview')
-# if segger_systemview_is_enabled
-#     add_project_arguments('-DSEGGER_SYSTEMVIEW_ENABLED', language: ['c', 'cpp'])
-#     add_project_arguments(
-#         '-DSEGGER_SYSTEMVIEW_ENABLED',
-#         language: ['c', 'cpp'],
-#         native: true,
-#     )
-# endif
-
 # Enables the UART logging sink.
 #
 uart_logging_is_enabled = get_option('enable-uart-logging')
@@ -244,7 +238,7 @@ desired_c_compile_flags = [
     '--diag_wrap=off',
     '--display_error_number',
     '--abi=eabi',
-    '--define=F2837xD'
+    '--define=F2837xD',
 ]
 
 # Include support for generating map file linker flag.
@@ -261,10 +255,8 @@ subdir('build-systems/meson/linker/linker-map')
 if 'lp-f28379d' == board
 
     # Add board-specific compiler flags.
-    # 
-    desired_c_compile_flags += [
-        '--define=CPU1'
-    ]
+    #
+    desired_c_compile_flags += ['--define=CPU1']
 
     # Add board-specific linker flags.
     #
@@ -276,8 +268,8 @@ if 'lp-f28379d' == board
         '--heap_size=0x200',
         '--stack_size=0x3F8',
         '--warn_sections',
-        '-i/root/ti/cgt/ti-cgt-c2000_22.6.1.LTS/lib',
-        '-i/root/ti/cgt/ti-cgt-c2000_22.6.1.LTS/include',
+        '-i' + ti_c28x_c2000_cgt_dir / 'lib',
+        '-i' + ti_c28x_c2000_cgt_dir / 'include',
         '--reread_libs',
         '--define=RAM',
         '--diag_wrap=off',
@@ -285,10 +277,11 @@ if 'lp-f28379d' == board
         '--xml_link_info=example-i2c-ti-f28379d-bme280_linkInfo.xml',
         '--entry_point=code_start',
         '--rom_model',
+        '-llibc.a',
     ]
 endif
-# 
-# 
+#
+#
 # if board == 'nucleo-f767zi'
 #     desired_c_compile_flags += [
 #         '-DSTM32F767xx',
@@ -484,9 +477,9 @@ subdir('build-systems/meson/format')
 #region TESTS
 
 # Include tests module in native builds.
-# 
+#
 # The tests are off-target tests built natively with gcc.
-# 
+#
 if not meson.is_cross_build()
     subdir('src/test')
 endif
