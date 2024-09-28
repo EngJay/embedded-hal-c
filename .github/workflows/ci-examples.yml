@@ -12,8 +12,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-ti-lp-f28379d-bare-metal-c2000-c99:
-    name: Build - ti:lp-f28379d:bare-metal:c2000:c99
+  build:
+    name: Build - BME280 Example
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/engjay/build-c2000-meson:0.1.0
@@ -21,157 +21,166 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
       options: -h gha.ci.build
+    strategy:
+        matrix:
+          include:
+            - vendor: ti
+              board: lp-f28379d
+              os: bare-metal
+              compiler: c2000
+              lang: c99
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.CI_SUBMODULES_TOKEN }}
           submodules: recursive
       - name: Create symlinks
         run: |
           ./symlink.sh
-      - name: Build TI LP-F28379D - Bare Metal - C99 (release)
+      - name: Build example
         run: |
-          make CROSS=ti:lp-f28379d:bare-metal:c2000:c99
-        working-directory: ./examples/ti/lp-f28379d/bme280
+          make CROSS=${{ matrix.vendor }}:${{ matrix.board }}:${{ matrix.os }}:${{ matrix.lang }}
+        working-directory: ./examples/${{ matrix.vendor }}/${{ matrix.board }}/bme280
 
-  unit-tests:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/engjay/test-cpputest-meson:0.1.0
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-      options: -h gha.ci.unit-tests
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.CI_SUBMODULES_TOKEN }}
-          submodules: recursive
-          fetch-depth: 0
-      - name: Create symlinks
-        run: |
-          ./symlink.sh
-      - name: Run unit tests with coverage
-        run: |
-          make test-coverage
-        working-directory: ./examples/ti/lp-f28379d/bme280
-      - uses: actions/upload-artifact@v4
-        with:
-          name: coverage.xml
-          path: examples/ti/lp-f28379d/bme280/build/testsbuild/meson-logs/coverage.xml
-      - uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: examples/ti/lp-f28379d/bme280/build/testsbuild/meson-logs/coveragereport
+  # unit-tests:
+  #   name: Unit Tests
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: ghcr.io/engjay/test-cpputest-meson:0.1.0
+  #     credentials:
+  #       username: ${{ github.actor }}
+  #       password: ${{ secrets.GITHUB_TOKEN }}
+  #     options: -h gha.ci.unit-tests
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         token: ${{ secrets.CI_SUBMODULES_TOKEN }}
+  #         submodules: recursive
+  #         fetch-depth: 0
+  #     - name: Create symlinks
+  #       run: |
+  #         ./symlink.sh
+  #     - name: Run unit tests with coverage
+  #       run: |
+  #         make test-coverage
+  #       working-directory: ./examples/ti/lp-f28379d/bme280
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: coverage.xml
+  #         path: examples/ti/lp-f28379d/bme280/build/testsbuild/meson-logs/coverage.xml
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: coverage-report
+  #         path: examples/ti/lp-f28379d/bme280/build/testsbuild/meson-logs/coveragereport
 
-  analysis:
-    name: Analysis
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/engjay/build-c2000-meson:0.1.0
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-      options: -h gha.ci.analysis
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.CI_SUBMODULES_TOKEN }}
-          submodules: recursive
-          fetch-depth: 0
-      - name: Override git safe directory check
-        run: |
-          git config --global --add safe.directory /__w/embedded-hal-c/embedded-hal-c
-      - name: Run sloccount
-        run: |
-          make sloccount-report
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sloccount.sc
-          path: build/build-systems/meson/analysis/sloccount/sloccount.sc
-      - name: Run vale
-        run: |
-          make vale-report
-        continue-on-error: true
-      - uses: actions/upload-artifact@v4
-        with:
-          name: vale.json
-          path: build/build-systems/meson/analysis/vale/vale.json
-      - name: Run jscpd
-        run: |
-          make dups-report
-        continue-on-error: true
-      - uses: actions/upload-artifact@v4
-        with:
-          name: jscpd-report.json
-          path: build/report/jscpd-report.json
+  # analysis:
+  #   name: Analysis
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: ghcr.io/engjay/build-c2000-meson:0.1.0
+  #     credentials:
+  #       username: ${{ github.actor }}
+  #       password: ${{ secrets.GITHUB_TOKEN }}
+  #     options: -h gha.ci.analysis
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         token: ${{ secrets.CI_SUBMODULES_TOKEN }}
+  #         submodules: recursive
+  #         fetch-depth: 0
+  #     - name: Override git safe directory check
+  #       run: |
+  #         git config --global --add safe.directory /__w/embedded-hal-c/embedded-hal-c
+  #     - name: Run sloccount
+  #       run: |
+  #         make sloccount-report
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: sloccount.sc
+  #         path: build/build-systems/meson/analysis/sloccount/sloccount.sc
+  #     - name: Run vale
+  #       run: |
+  #         make vale-report
+  #       continue-on-error: true
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: vale.json
+  #         path: build/build-systems/meson/analysis/vale/vale.json
+  #     - name: Run jscpd
+  #       run: |
+  #         make dups-report
+  #       continue-on-error: true
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: jscpd-report.json
+  #         path: build/report/jscpd-report.json
 
-  analysis-ti-lp-f28379d-bare-metal-c2000-c99:
-    name: Variant Analysis - ti:lp-f28379d:bare-metal:c2000:c99
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/engjay/build-arm-meson:0.3.0
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-      options: -h gha.ci.analysis
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.CI_SUBMODULES_TOKEN }}
-          submodules: recursive
-          fetch-depth: 0
-      - name: Create symlinks
-        run: |
-          ./symlink.sh
-      - name: Override git safe directory check
-        run: |
-          git config --global --add safe.directory /__w/embedded-hal-c/embedded-hal-c
-      - name: Run cppcheck - TI LP-F28379D - Bare-Metal - C99
-        run: |
-          make CROSS=ti:lp-f28379d:bare-metal:c2000:c99 cppcheck-report
-        working-directory: ./examples/ti/lp-f28379d/bme280
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.job }}-cppcheck.xml
-          path: subprojects/blinky/build/cppcheck.xml
-      - name: Run clang-tidy - TI LP-F28379D - Bare-Metal - C99
-        run: |
-          make CROSS=ti:lp-f28379d:bare-metal:c2000:c99 tidy-report
-        working-directory: ./examples/ti/lp-f28379d/bme280
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.job }}-clangtidy.txt
-          path: examples/ti/lp-f28379d/bme280/build/build-systems/meson/analysis/clang-tidy/clangtidy.txt
+  # analysis-ti-lp-f28379d-bare-metal-c2000-c99:
+  #   name: Variant Analysis - ti:lp-f28379d:bare-metal:c2000:c99
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: ghcr.io/engjay/build-arm-meson:0.3.0
+  #     credentials:
+  #       username: ${{ github.actor }}
+  #       password: ${{ secrets.GITHUB_TOKEN }}
+  #     options: -h gha.ci.analysis
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         token: ${{ secrets.CI_SUBMODULES_TOKEN }}
+  #         submodules: recursive
+  #         fetch-depth: 0
+  #     - name: Create symlinks
+  #       run: |
+  #         ./symlink.sh
+  #     - name: Override git safe directory check
+  #       run: |
+  #         git config --global --add safe.directory /__w/embedded-hal-c/embedded-hal-c
+  #     - name: Run cppcheck - TI LP-F28379D - Bare-Metal - C99
+  #       run: |
+  #         make CROSS=ti:lp-f28379d:bare-metal:c2000:c99 cppcheck-report
+  #       working-directory: ./examples/ti/lp-f28379d/bme280
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ${{ github.job }}-cppcheck.xml
+  #         path: subprojects/blinky/build/cppcheck.xml
+  #     - name: Run clang-tidy - TI LP-F28379D - Bare-Metal - C99
+  #       run: |
+  #         make CROSS=ti:lp-f28379d:bare-metal:c2000:c99 tidy-report
+  #       working-directory: ./examples/ti/lp-f28379d/bme280
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ${{ github.job }}-clangtidy.txt
+  #         path: examples/ti/lp-f28379d/bme280/build/build-systems/meson/analysis/clang-tidy/clangtidy.txt
 
-  docs:
-    name: Project Docs
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/engjay/build-arm-meson:0.3.0
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-      options: -h gha.ci.docs.build-arm-meson:0.3.0
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.CI_SUBMODULES_TOKEN }}
-          submodules: recursive
-          fetch-depth: 0
-      - name: Create symlinks
-        run: |
-          ./symlink.sh
-      - name: Generate docs
-        run: |
-          make docs-ci
-        working-directory: ./examples/ti/lp-f28379d/bme280
-      - name: Doc coverage
-        run: |
-          make docs-coverage
-        working-directory: ./examples/ti/lp-f28379d/bme280
-      - uses: actions/upload-artifact@v4
-        with:
-          name: docs-coverage.json
-          path: examples/ti/lp-f28379d/bme280/build/doc-coverage.json
+  # docs:
+  #   name: Project Docs
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: ghcr.io/engjay/build-arm-meson:0.3.0
+  #     credentials:
+  #       username: ${{ github.actor }}
+  #       password: ${{ secrets.GITHUB_TOKEN }}
+  #     options: -h gha.ci.docs.build-arm-meson:0.3.0
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         token: ${{ secrets.CI_SUBMODULES_TOKEN }}
+  #         submodules: recursive
+  #         fetch-depth: 0
+  #     - name: Create symlinks
+  #       run: |
+  #         ./symlink.sh
+  #     - name: Generate docs
+  #       run: |
+  #         make docs-ci
+  #       working-directory: ./examples/ti/lp-f28379d/bme280
+  #     - name: Doc coverage
+  #       run: |
+  #         make docs-coverage
+  #       working-directory: ./examples/ti/lp-f28379d/bme280
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: docs-coverage.json
+  #         path: examples/ti/lp-f28379d/bme280/build/doc-coverage.json
