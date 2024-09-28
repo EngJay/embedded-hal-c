@@ -50,7 +50,7 @@ jobs:
         working-directory: ./examples/${{ matrix.vendor }}/${{ matrix.board }}/bme280
       - name: Build example
         run: |
-          make CROSS=${{ matrix.vendor }}:${{ matrix.board }}:${{ matrix.os }}:${{ matrix.lang }}
+          make CROSS=${{ matrix.vendor }}:${{ matrix.board }}:${{ matrix.os }}:${{ matrix.compiler }}:${{ matrix.lang }}
         working-directory: ./examples/${{ matrix.vendor }}/${{ matrix.board }}/bme280
 
   # unit-tests:
