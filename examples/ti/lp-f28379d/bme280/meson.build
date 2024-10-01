@@ -37,24 +37,11 @@ project(
     version: '0.1.0',
 )
 
+#region BUILD DEPENDENCIES
+
 # TI C28x C2000 CGT tools location.
 #
-# ti_c28x_c2000_cgt_dir = '/Applications/ti/ti-cgt-c2000_22.6.1.LTS'
-
 ti_c28x_c2000_cgt_dir = '/root/ti/cgt/ti-cgt-c2000_22.6.1.LTS'
-
-# Check for miniumum required GCC for ARM version.
-#
-if meson.is_cross_build()
-    target_compiler = meson.get_compiler('c', native: false)
-    if target_compiler.get_id() == 'gcc' and target_compiler.version().version_compare('<9.0') and target_architecture == 'arm'
-        error(
-            'This project requires gcc-arm-none-eabi v9.0 or later. See README.md for more information.',
-        )
-    endif
-endif
-
-#region BUILD DEPENDENCIES
 
 # Include the Embedded HAL for C subproject to get embedded_hal_c_includes.
 #
@@ -83,18 +70,10 @@ endif
 
 # Get build properties from cross files.
 #
-vendor = meson.get_external_property('vendor', 'native', native: false)
 board = meson.get_external_property('board', 'native', native: false)
 os = meson.get_external_property('os', 'native', native: false)
 compiler = meson.get_external_property('compiler', 'gcc-14', native: false)
 lang = meson.get_external_property('language', 'c', native: false)
-
-vendor == 'ti'
-board = 'lp-f28379d'
-os = 'none'
-compiler = 'ti-c2000'
-lang = 'c'
-lang_ver = '99'
 
 # Pick up common compiler variables.
 #
@@ -166,12 +145,12 @@ linker_script_path = ''
 
 # Language Versions
 #
-# Sets the built-in compiler options for language versions with default of C11
+# Sets the built-in compiler options for language versions with default of C99
 # and C++11. The variables c_language_ver and cpp_language_ver are provided by
 # the cxx and cppxx cross files, so these will be automatically set when a cross
 # string is supplied.
 #
-c_language_ver = get_variable('c_language_ver', '11')
+c_language_ver = get_variable('c_language_ver', '99')
 cpp_language_ver = get_variable('cpp_language_ver', '11')
 
 # Build type.
@@ -224,23 +203,6 @@ endif
 #     desired_c_compile_flags += '-pedantic-error'
 # endif
 
-# OVERRIDE project-specific C compiler flags.
-#
-# NOTE: desired_c_compile_flags is provided by subdir('build-systems/meson/compiler/c').
-#
-desired_c_compile_flags = [
-    '--cla_support=cla1',
-    '--float_support=fpu32',
-    '--tmu_support=tmu0',
-    '--vcu_support=vcu2',
-    '--diag_suppress=10063',
-    '--diag_warning=225',
-    '--diag_wrap=off',
-    '--display_error_number',
-    '--abi=eabi',
-    '--define=F2837xD',
-]
-
 # Include support for generating map file linker flag.
 #
 # This provides the map_file variable that supports .format('file_name_here') to
@@ -254,9 +216,23 @@ subdir('build-systems/meson/linker/linker-map')
 #
 if 'lp-f28379d' == board
 
-    # Add board-specific compiler flags.
+    # OVERRIDE project-specific C compiler flags.
     #
-    desired_c_compile_flags += ['--define=CPU1']
+    # NOTE: desired_c_compile_flags is provided by subdir('build-systems/meson/compiler/c').
+    #
+    desired_c_compile_flags = [
+        '--cla_support=cla1',
+        '--float_support=fpu32',
+        '--tmu_support=tmu0',
+        '--vcu_support=vcu2',
+        '--diag_suppress=10063',
+        '--diag_warning=225',
+        '--diag_wrap=off',
+        '--display_error_number',
+        '--abi=eabi',
+        '--define=F2837xD',
+        '--define=CPU1',
+    ]
 
     # Add board-specific linker flags.
     #
@@ -363,7 +339,7 @@ vale_exit_nicely = true
 
 # Configure Doxygen description, inputs, output dir, and excludes.
 #
-doxygen_description = 'F28379D .'
+doxygen_description = 'F28379D.'
 doxygen_input = [
     meson.project_source_root() / 'README.md',
 ]
