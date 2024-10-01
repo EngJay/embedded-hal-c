@@ -6,6 +6,10 @@
 # and order of arguments generated for linking that prevents the linking command
 # for some code genereration tools from being being generated properly.
 # TODO explain what this Makefile provides.
+# 
+# @author Jason Scott <reachme@jasonpscott.com>
+# @date 2024-10-01
+# 
 
 # Usage
 #
