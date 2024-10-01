@@ -22,3 +22,14 @@ Step 2: Run the Make build.
 ```
 make CROSS=ti:lp-f28379d:bare-metal:c2000:c99
 ```
+
+## Running the tests
+
+- The tests are built natively with `gcc-14` and run off-target, so `gcc-14`
+  must be installed on the machine or in the container running them.
+
+The tests are run by running the `test` target of the Makefile shim.
+
+```text
+make -f Makefile.shim test
+```

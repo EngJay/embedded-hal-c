@@ -20,10 +20,19 @@ app_executable_name = 'example-i2c-ti-lp-f28379d-bme280'
 # create the object to pass to the executable() function.
 #
 app_include_dirs_arr = [
-    ti_c28x_c2000_cgt_dir / 'include',
-    ti_c28x_c2000_cgt_dir / 'lib',
     'device',
 ]
+
+# Include off-target support if not cross build.
+# 
+if meson.is_cross_build()
+    app_include_dirs_arr += [
+        ti_c28x_c2000_cgt_dir / 'include',
+        ti_c28x_c2000_cgt_dir / 'lib',
+    ]
+else
+    app_include_dirs_arr += []
+endif
 
 # Application source files.
 #

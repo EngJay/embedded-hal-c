@@ -129,7 +129,7 @@ endif
 #   - host_c_compiler_id
 #   - desired_c_compile_flags
 #   - desired_native_c_compile_flags
-#   - l_flags (overridable defaults)
+#   - c_l_flags (overridable defaults)
 #
 # The compiler variables are used by the check-and-apply-flags module for
 # checking support for flags.
@@ -151,9 +151,9 @@ subdir('build-systems/meson/compiler/c')
 #   - host_cpp_compiler_id
 #   - desired_cpp_compile_flags
 #   - desired_native_cpp_compile_flags
-#   - l_flags (overridable defaults)
+#   - cpp_l_flags (overridable defaults)
 #
-# subdir('build-systems/meson/compiler/cpp')
+subdir('build-systems/meson/compiler/cpp')
 
 # Create linker-related arrays.
 #
