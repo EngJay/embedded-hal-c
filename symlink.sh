@@ -18,7 +18,7 @@ find . -type l -delete
 
 # Provide build-systems to all subprojects.
 # 
-ln -s $(pwd)/build-systems $(pwd)/examples/ti/lp-f28379d/bme280/build-systems;
+ln -s $(pwd)/build-systems $(pwd)/examples/lp-f28379d/bme280/build-systems;
 
 # Provide project root to examples as a subproject.
 #
@@ -28,6 +28,6 @@ ln -s $(pwd)/build-systems $(pwd)/examples/ti/lp-f28379d/bme280/build-systems;
 # dir, so the current state of the local files is included instead of the remote
 # files from the repo on GitHub. 
 # 
-ln -s $(pwd) $(pwd)/examples/ti/lp-f28379d/bme280/subprojects/embedded-hal-c;
+ln -s $(pwd) $(pwd)/examples/lp-f28379d/bme280/subprojects/embedded-hal-c;
 
 # Symlink external dependencies into subprojects.
