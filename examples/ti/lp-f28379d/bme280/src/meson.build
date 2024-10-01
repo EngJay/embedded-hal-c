@@ -54,11 +54,11 @@ all_app_src_files = files(app_src_files)
 
 linker_script = meson.current_source_dir() / '2837xD_RAM_lnk_cpu1.cmd'
 
+# Build using Make since TI C28x C2000 is not compatible with Meson's linking
+# command format.
+# 
 make = find_program('make')
-
-# adapter_makefile = meson.project_source_root() / 'Makefile.build'
-
-# run_command(make, '-C', meson.project_source_root(), '--file', 'Makefile.build', check: true)
+run_command(make, '-C', meson.project_source_root(), '--file', 'Makefile.adapter')
 
 # infile = 'source_code.txt'
 # outfile = 'example-i2c-ti-f28379d-bme280'
