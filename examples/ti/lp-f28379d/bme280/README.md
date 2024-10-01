@@ -13,13 +13,13 @@ Two steps are needed to build the project
 
 Step 1: Configure the Meson build using the Makefile shim.
 
-```text
+```bash
 CROSS=c2000 make -f Makefile.shim
 ```
 
 Step 2: Run the Make build.
 
-```
+```bash
 make CROSS=ti:lp-f28379d:bare-metal:c2000:c99
 ```
 
@@ -30,6 +30,6 @@ make CROSS=ti:lp-f28379d:bare-metal:c2000:c99
 
 The tests are run by running the `test` target of the Makefile shim.
 
-```text
+```bash
 make -f Makefile.shim test
 ```
