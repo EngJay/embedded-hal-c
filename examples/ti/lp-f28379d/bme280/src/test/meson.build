@@ -12,6 +12,11 @@ test_executable_name = 'example-i2c-ti-lp-f28379d-bme280-tests'
 cpputest_subproject = subproject('cpputest')
 cpputest_dep = cpputest_subproject.get_variable('cpputest_dep')
 
+# Include the fff subproject to get fff_includes.
+# 
+fff_subproject = subproject('fff')
+fff_includes = fff_subproject.get_variable('fff_includes')
+
 #endregion TEST_DEPENDENCIES
 
 #region TEST_FLAGS
@@ -44,20 +49,23 @@ app_src_dirs = []
 
 app_src_files = files()
 
-test_include_dirs = []
+test_include_dirs = [
+	'fakes'
+]
 
 test_src_dirs = []
 
 test_src_files = files(
 	'all_tests.cpp',
     'sanity_check.cpp',
+	'fakes' / 'fff_global_fakes.c'
 )
 
 # Create as an array initially for array operations not possible with
 # include_directories().
 #
 all_test_inc_dirs_arr = [
-
+	test_include_dirs,
 ]
 
 all_test_src_files = [
@@ -75,7 +83,7 @@ all_test_inc_dirs = include_directories(all_test_inc_dirs_arr)
 
 tests_exe = executable(test_executable_name,
 	all_test_src_files,
-	include_directories: all_test_inc_dirs,
+	include_directories: [all_test_inc_dirs, fff_includes],
 	dependencies: cpputest_dep,
 	link_args: [],
 	cpp_args: test_compiler_flags,
