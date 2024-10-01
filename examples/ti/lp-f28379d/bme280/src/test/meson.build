@@ -2,6 +2,9 @@
 # @file meson.build
 # @brief Meson module for test executables.
 # 
+# @author Jason Scott <reachme@jasonpscott.com>
+# @date 2024-10-01
+# 
 
 test_executable_name = 'example-i2c-ti-lp-f28379d-bme280-tests'
 
