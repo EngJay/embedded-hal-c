@@ -208,29 +208,29 @@ UNDEFINE_FLAGS := $(addprefix -U,$(UNDEFINES))
 # Setting DATEOVERRIDE to a non-zero value will use DATEOVERRIDE as BUILD_DATE 
 # instead. This supports deterministic builds, which allows a past build to be more 
 # accurately reproduced.
-# ifeq ($(DATEOVERRIDE),0)
-# BUILD_DATE := $(shell date -u +"%d/%m/%Y, %H:%M")
-# else
-# BUILD_DATE := $(DATEOVERRIDE)
-# endif
+ifeq ($(DATEOVERRIDE),0)
+BUILD_DATE := $(shell date -u +"%d/%m/%Y, %H:%M")
+else
+BUILD_DATE := $(DATEOVERRIDE)
+endif
 
 # Store build user and hostname of machine.
-# BUILD_MACHINE := $(shell echo `whoami`@`hostname`)
+BUILD_MACHINE := $(shell echo `whoami`@`hostname`)
 
 # Generate build tag and build info.
 # REF: https://embeddedartistry.com/blog/2016/12/21/giving-your-firmware-build-a-version/
-# version := $(subst -, ,$(shell git describe --long --dirty --tags))
-# COMMIT := $(strip $(word 3, $(version)))
-# COMMITS_PAST := $(strip $(word 2, $(version)))
-# DIRTY := $(strip $(word 4, $(version)))
-# ifneq ($(COMMITS_PAST), 0)
-# 	BUILD_INFO_COMMITS := "."$(COMMITS_PAST)
-# endif
-# ifneq ($(DIRTY),)
-# 	BUILD_INFO_DIRTY :="+"
-# endif
-# export BUILD_TAG :=$(strip $(word 1, $(version)))
-# export BUILD_INFO := $(COMMIT)$(BUILD_INFO_COMMITS)$(BUILD_INFO_DIRTY)
+version := $(subst -, ,$(shell git describe --long --dirty --tags))
+COMMIT := $(strip $(word 3, $(version)))
+COMMITS_PAST := $(strip $(word 2, $(version)))
+DIRTY := $(strip $(word 4, $(version)))
+ifneq ($(COMMITS_PAST), 0)
+	BUILD_INFO_COMMITS := "."$(COMMITS_PAST)
+endif
+ifneq ($(DIRTY),)
+	BUILD_INFO_DIRTY :="+"
+endif
+export BUILD_TAG :=$(strip $(word 1, $(version)))
+export BUILD_INFO := $(COMMIT)$(BUILD_INFO_COMMITS)$(BUILD_INFO_DIRTY)
 
 # Build metadata automatically included.
 #
@@ -238,12 +238,12 @@ UNDEFINE_FLAGS := $(addprefix -U,$(UNDEFINES))
 # _VERSION_BUILD_MACHINE_: 	Machine that built it (USER@HOST)
 # _VERSION_TAG: 			last git tag number	
 # _VERSION_BUILD_:			(commit).(num commits past last tag)(+ if dirty)
-# DEFINE_FLAGS :=
-# 	$(DEFINE_FLAGS)
-# 	-D_VERSION_BUILD_DATE_=\""$(BUILD_DATE)"\"
-# 	-D_VERSION_BUILD_MACHINE_=\""$(BUILD_MACHINE)"\"
-# 	-D_VERSION_TAG_=\"$(BUILD_TAG)\"
-# 	-D_VERSION_BUILD_INFO_=\"$(BUILD_INFO)\"
+DEFINE_FLAGS := \
+	$(DEFINE_FLAGS) \
+	-D_VERSION_BUILD_DATE_=\""$(BUILD_DATE)"\" \
+	-D_VERSION_BUILD_MACHINE_=\""$(BUILD_MACHINE)"\" \
+	-D_VERSION_TAG_=\"$(BUILD_TAG)\" \
+	-D_VERSION_BUILD_INFO_=\"$(BUILD_INFO)\"
 
 #endregion FLAGS
 
