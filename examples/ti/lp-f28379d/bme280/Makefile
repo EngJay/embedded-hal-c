@@ -102,6 +102,12 @@ BUILD_DIR ?= build
 #
 TESTS_BUILD_DIR ?= testsbuild
 
+# Adapter build directory.
+#
+# Temporary workaround for building with Make through Meson.
+#
+ADAPTER_BUILD_DIR ?= build_make
+
 # Default location of the ninja build file.
 #
 # This is used in a Make rule below for running meson if the file needs to be
@@ -382,6 +388,7 @@ clean:
 .PHONY: distclean
 distclean:
 	$(Q) rm -rf $(BUILD_DIR)
+	$(Q) rm -rf $(ADAPTER_BUILD_DIR)
 
 .PHONY : help
 help :

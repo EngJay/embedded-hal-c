@@ -44,10 +44,6 @@ jobs:
       - name: Create symlinks
         run: |
           ./symlink.sh
-      - name: Run Meson via Makefile shim
-        run: |
-            CROSS=c2000 make -f Makefile.shim
-        working-directory: ./examples/${{ matrix.vendor }}/${{ matrix.board }}/bme280
       - name: Build example
         run: |
           make CROSS=${{ matrix.vendor }}:${{ matrix.board }}:${{ matrix.os }}:${{ matrix.compiler }}:${{ matrix.lang }}
