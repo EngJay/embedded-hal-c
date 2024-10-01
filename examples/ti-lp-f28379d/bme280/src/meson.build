@@ -58,7 +58,11 @@ linker_script = meson.current_source_dir() / '2837xD_RAM_lnk_cpu1.cmd'
 # command format.
 # 
 make = find_program('make')
-run_command(make, '-C', meson.project_source_root(), '--file', 'Makefile.adapter')
+run_command(
+    make, '-C', meson.project_source_root(), '--file', 'Makefile.adapter', 
+    capture: true,
+    check: true,
+)
 
 # infile = 'source_code.txt'
 # outfile = 'example-i2c-ti-f28379d-bme280'
