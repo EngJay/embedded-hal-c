@@ -40,6 +40,7 @@ jobs:
         with:
           token: ${{ secrets.CI_SUBMODULES_TOKEN }}
           submodules: recursive
+          fetch-depth: 0
       - name: Create symlinks
         run: |
           ./symlink.sh
@@ -48,36 +49,36 @@ jobs:
           make CROSS=${{ matrix.board }}:${{ matrix.os }}:${{ matrix.compiler }}:${{ matrix.lang }}
         working-directory: ./examples/${{ matrix.board }}/bme280
 
-  # unit-tests:
-  #   name: Unit Tests
-  #   runs-on: ubuntu-latest
-  #   container:
-  #     image: ghcr.io/engjay/test-cpputest-meson:0.1.0
-  #     credentials:
-  #       username: ${{ github.actor }}
-  #       password: ${{ secrets.GITHUB_TOKEN }}
-  #     options: -h gha.ci.unit-tests
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         token: ${{ secrets.CI_SUBMODULES_TOKEN }}
-  #         submodules: recursive
-  #         fetch-depth: 0
-  #     - name: Create symlinks
-  #       run: |
-  #         ./symlink.sh
-  #     - name: Run unit tests with coverage
-  #       run: |
-  #         make test-coverage
-  #       working-directory: ./examples/ti/lp-f28379d/bme280
-  #     - uses: actions/upload-artifact@v4
-  #       with:
-  #         name: coverage.xml
-  #         path: examples/ti/lp-f28379d/bme280/build/testsbuild/meson-logs/coverage.xml
-  #     - uses: actions/upload-artifact@v4
-  #       with:
-  #         name: coverage-report
-  #         path: examples/ti/lp-f28379d/bme280/build/testsbuild/meson-logs/coveragereport
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/engjay/test-cpputest-meson:0.1.0
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      options: -h gha.ci.unit-tests
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.CI_SUBMODULES_TOKEN }}
+          submodules: recursive
+          fetch-depth: 0
+      - name: Create symlinks
+        run: |
+          ./symlink.sh
+      - name: Run unit tests with coverage
+        run: |
+          make test-coverage
+        working-directory: ./examples/ti-lp-f28379d/bme280
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage.xml
+          path: examples/ti-lp-f28379d/bme280/build/testsbuild/meson-logs/coverage.xml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: examples/ti-lp-f28379d/bme280/build/testsbuild/meson-logs/coveragereport
 
   # analysis:
   #   name: Analysis
