@@ -25,3 +25,18 @@ The tests are run by running the `test` target of the Makefile shim.
 ```bash
 make test
 ```
+
+### Test Coverage
+
+To generate test coverage reports, the Pip package `gcovr` must be available on
+the machine running the tests.
+
+A script has been included in the root of the project for *nix machines,
+`setup-coverage-reporting.sh`.
+
+Then, the coverage reports can be generated through Meson via the
+`test-coverage` target in the Makefile shim.
+
+```bash
+make test-coverage
+```
