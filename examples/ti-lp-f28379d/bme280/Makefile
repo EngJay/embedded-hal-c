@@ -86,6 +86,7 @@ endif
 #
 # This can be changed to try out pre-releases or other versions of Meson.
 #
+# MESON ?= python3 /Users/ne10/Projects/forks/meson/meson.py
 # MESON ?= python3 /Users/ne10/Projects/meson/meson.py
 # MESON ?= python3 /meson/meson.py
 MESON ?= meson

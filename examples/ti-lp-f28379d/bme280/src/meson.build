@@ -23,12 +23,16 @@ app_include_dirs_arr = [
     'device',
 ]
 
+# C2000WARE_ROOT = '/Users/ne10/ti/C2000Ware_5_03_00_00'
+
 # Include off-target support if not cross build.
 # 
 if meson.is_cross_build()
     app_include_dirs_arr += [
         ti_c28x_c2000_cgt_dir / 'include',
         ti_c28x_c2000_cgt_dir / 'lib',
+        # C2000WARE_ROOT / 'driverlib' / 'f2837xd' / 'driverlib',
+	    '..' / '..' / '..' / '..' / 'inc'
     ]
 else
     app_include_dirs_arr += []
@@ -84,10 +88,11 @@ run_command(
 # command after the input object files.
 #
 # cc = meson.get_compiler('c')
-# c2000_libc = cc.find_library('c', dirs: ti_c28x_c2000_cgt_dir / 'lib', static: true)
+# c2000_libc = cc.find_library('libc', dirs: ti_c28x_c2000_cgt_dir / 'lib', static: true)
+# # c2000_rts_lib = cc.find_library('rts2800_fpu32_eabi', dirs: ti_c28x_c2000_cgt_dir / 'lib', static: true)
 
-# Excutable target for the application.
-#
+# # Executable target for the application.
+
 # app_exe = executable(app_executable_name,
 # 	all_app_src_files,
 # 	include_directories: [
@@ -97,7 +102,10 @@ run_command(
 #     ],
 #     c_args: [desired_c_compile_flags],
 # 	link_args: [linker_script, f2837xd_driverlib[0].full_path(), c_l_flags],
-#     # dependencies: [c2000_libc]
+#     dependencies: [
+#         c2000_libc,
+#         # c2000_rts_lib,
+#     ]
 # 	# cpp_args: compiler_flags, # Added directly in the top-level Meson module.
 #     # override_options: [
 #     #     'cpp_std=c++' + cpp_language_ver,

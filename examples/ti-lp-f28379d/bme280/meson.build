@@ -42,6 +42,7 @@ project(
 # TI C28x C2000 CGT tools location.
 #
 ti_c28x_c2000_cgt_dir = '/root/ti/cgt/ti-cgt-c2000_22.6.1.LTS'
+# ti_c28x_c2000_cgt_dir = '/Applications/ti/ti-cgt-c2000_22.6.1.LTS'
 
 # Include the Embedded HAL for C subproject to get embedded_hal_c_includes.
 #
@@ -232,6 +233,7 @@ if 'lp-f28379d' == board
         '--abi=eabi',
         '--define=F2837xD',
         '--define=CPU1',
+        '--issue_remarks'
     ]
 
     # Add board-specific linker flags.
@@ -253,7 +255,8 @@ if 'lp-f28379d' == board
         '--xml_link_info=example-i2c-ti-f28379d-bme280_linkInfo.xml',
         '--entry_point=code_start',
         '--rom_model',
-        '-llibc.a',
+        # '-lrts2800_fpu32_eabi.lib'
+        # '-llibc.a',
     ]
 endif
 #
@@ -421,7 +424,9 @@ clangtidy_files = [
 # implementation for specific hardware. The specific variant sources that
 # provide appropriate implementations are included based on the cross string
 # provided to Meson.
-subdir('src')
+if meson.is_cross_build()
+    subdir('src')
+endif
 
 # Including the specific variant of sources based on the cross argument string.
 #
