@@ -1,0 +1,468 @@
+##
+# @file meson.build
+# @brief Top-level Meson module for I2C example using a TI F28379D and BME280.
+#
+# This module:
+#
+#   - Defines the Meson project.
+#   - Includes and specifies the options for the project.
+#   - Includes and specifies the compiler and linker flags.
+#   - Includes build support.
+#   - Includes and specifies the sources files and includes.
+#   - Includes and configures the executables.
+#   - Includes and configures the tools used.
+#
+# This module depends on the presence of the the build-systems repo included as
+# a submodule in the root of the project or symlinked into the root if this is
+# a Meson subproject.
+#
+# @author Jason Scott <reachme@jasonpscott.com>
+# @date 2024-09-04
+#
+# @copyright Copyright (c) 2024
+#
+project(
+    'example-i2c-ti-f28379d-bme280',
+    ['c', 'cpp'],
+    default_options: [
+        'debug=false', # Defaults to release build.
+        'warning_level=3',
+        'optimization=2',
+        # `build.*` options affect `native: true targets`,
+        # plain options affect `native: false` targets.
+        'c_std=c99',
+        'build.c_std=c99',
+    ],
+    meson_version: '>=1.4.0',
+    version: '0.1.0',
+)
+
+#region BUILD DEPENDENCIES
+
+# TI C28x C2000 CGT tools location.
+#
+ti_c28x_c2000_cgt_dir = '/root/ti/cgt/ti-cgt-c2000_22.6.1.LTS'
+# ti_c28x_c2000_cgt_dir = '/Applications/ti/ti-cgt-c2000_22.6.1.LTS'
+
+# Include the Embedded HAL for C subproject to get embedded_hal_c_includes.
+#
+# Embedded HAL for C provides standardized interfaces for common components of
+# embedded systems. This dependency provides only the interfaces.
+# Implementations must be provided through the inclusion of an implementation
+# package or in custom sources files locally in the project.
+#
+embedded_hal_c_subproject = subproject('embedded-hal-c')
+embedded_hal_c_includes = embedded_hal_c_subproject.get_variable('embedded_hal_c_includes')
+
+# Include the C2000Ware Core SDK subproject to get c2000ware_path.
+#
+# This dependency provides only a path to the SDK since it's meant to be
+# included on a file-by-file basis.
+#
+c2000ware_subproject = subproject('c2000ware-core-sdk')
+f2837xd_driverlib_include = c2000ware_subproject.get_variable('f2837xd_driverlib_include')
+if get_option('debug')
+    f2837xd_driverlib = c2000ware_subproject.get_variable('f2837xd_driverlib_debug_lib')
+else
+    f2837xd_driverlib = c2000ware_subproject.get_variable('f2837xd_driverlib_release_lib')
+endif
+
+#endregion BUILD DEPENDENCIES
+
+# Get build properties from cross files.
+#
+board = meson.get_external_property('board', 'native', native: false)
+os = meson.get_external_property('os', 'native', native: false)
+compiler = meson.get_external_property('compiler', 'gcc-14', native: false)
+lang = meson.get_external_property('language', 'c', native: false)
+
+# Pick up common compiler variables.
+#
+# The compiler module provides:
+#
+#   - desired_common_warning_flags
+#   - desired_common_compile_flags
+#
+# These flags are picked up by the check-and-apply-flags module and added
+# directly to the build if the compiler supports them. The flags are listed in
+# the console output during build configuration.
+#
+# subdir('build-systems/meson/compiler')
+
+# Override base desired flags.
+#
+# TI C2000 is too different, conflicting flags cause build issues.
+#
+desired_common_warning_flags = []
+desired_common_compile_flags = []
+if meson.is_subproject() == false
+    desired_common_compile_flags += desired_common_warning_flags
+endif
+
+# Pick-up C language module.
+#
+# The C module provides:
+#
+#   - native_c_compiler
+#   - host_c_compiler
+#   - native_c_compiler_id
+#   - host_c_compiler_id
+#   - desired_c_compile_flags
+#   - desired_native_c_compile_flags
+#   - c_l_flags (overridable defaults)
+#
+# The compiler variables are used by the check-and-apply-flags module for
+# checking support for flags.
+#
+# The l_flags variable provides basic default linker flags and should be
+# overriden by defining it in the build config. The linker flags are not checked
+# for support because the linker too often provides false failures, so the
+# linker flags must be checked and set manually.
+#
+subdir('build-systems/meson/compiler/c')
+
+# Pick up C++ language module.
+#
+# The C++ module provides:
+#
+#   - native_cpp_compiler
+#   - host_cpp_compiler
+#   - native_cpp_compiler_id
+#   - host_cpp_compiler_id
+#   - desired_cpp_compile_flags
+#   - desired_native_cpp_compile_flags
+#   - cpp_l_flags (overridable defaults)
+#
+subdir('build-systems/meson/compiler/cpp')
+
+# Create linker-related arrays.
+#
+# This provides arrays for linker flags for C and C++. They are provided by this
+# top-level module to all included modules.
+#
+c_l_flags = []
+cpp_l_flags = []
+linker_script_path = ''
+
+# Language Versions
+#
+# Sets the built-in compiler options for language versions with default of C99
+# and C++11. The variables c_language_ver and cpp_language_ver are provided by
+# the cxx and cppxx cross files, so these will be automatically set when a cross
+# string is supplied.
+#
+c_language_ver = get_variable('c_language_ver', '99')
+cpp_language_ver = get_variable('cpp_language_ver', '11')
+
+# Build type.
+#
+build_is_debug = get_option('debug')
+if build_is_debug
+    # Specify build as debug and leave C assertions enabled.
+    add_project_arguments('-DDEBUG', language: ['c', 'cpp'])
+    add_project_arguments('-DDEBUG', language: ['c', 'cpp'], native: true)
+else
+    # Specify build as release and disable C assertions.
+    add_project_arguments('-DRELEASE -DNDEBUG', language: ['c', 'cpp'])
+    add_project_arguments('-DRELEASE -DNDEBUG', language: ['c', 'cpp'], native: true)
+endif
+
+# Features to include.
+
+# Enables the UART logging sink.
+#
+uart_logging_is_enabled = get_option('enable-uart-logging')
+if uart_logging_is_enabled
+    # TODO Add uart logging flags and sources.
+endif
+
+#region FLAGS
+
+# Disables compiler builtins.
+#
+# if get_option('disable-builtins')
+#     desired_c_compile_flags += '-fno-builtin'
+# endif
+
+# Disables the built-in stack protection.
+#
+# if get_option('disable-stack-protection')
+#     desired_c_compile_flags += '-fno-stack-protector'
+# endif
+
+# Enables pedantic compiler warnings.
+#
+# if get_option('enable-pedantic')
+#     desired_c_compile_flags += '-pedantic'
+# else
+#     desired_c_compile_flags += '-Wno-pedantic'
+# endif
+
+# Enables pedantic compiler errors.
+#
+# if get_option('enable-pedantic-error')
+#     desired_c_compile_flags += '-pedantic-error'
+# endif
+
+# Include support for generating map file linker flag.
+#
+# This provides the map_file variable that supports .format('file_name_here') to
+# generate the linker flag for generating a map file.
+#
+subdir('build-systems/meson/linker/linker-map')
+
+# Board-specific configuration.
+#
+# NOTE: board is provided by the board cross file that was specified.
+#
+if 'lp-f28379d' == board
+
+    # OVERRIDE project-specific C compiler flags.
+    #
+    # NOTE: desired_c_compile_flags is provided by subdir('build-systems/meson/compiler/c').
+    #
+    desired_c_compile_flags = [
+        '--cla_support=cla1',
+        '--float_support=fpu32',
+        '--tmu_support=tmu0',
+        '--vcu_support=vcu2',
+        '--diag_suppress=10063',
+        '--diag_warning=225',
+        '--diag_wrap=off',
+        '--display_error_number',
+        '--abi=eabi',
+        '--define=F2837xD',
+        '--define=CPU1',
+        '--issue_remarks'
+    ]
+
+    # Add board-specific linker flags.
+    #
+    # linker_script_path = meson.project_source_root() / 'src' / vendor / board / os / compiler / lang + c_language_ver / 'bsp/st/nucleo-f767zi/linker_scripts/STM32F767ZITX_FLASH.ld'
+    linker_script_path = ''
+    c_l_flags += [
+        # '-T' + linker_script_path, map_file.format('example-i2c-ti-f28379d-bme280'), # The map file will be written to the root of the build directory.
+        '-mmain.map',
+        '--heap_size=0x200',
+        '--stack_size=0x3F8',
+        '--warn_sections',
+        '-i' + ti_c28x_c2000_cgt_dir / 'lib',
+        '-i' + ti_c28x_c2000_cgt_dir / 'include',
+        '--reread_libs',
+        '--define=RAM',
+        '--diag_wrap=off',
+        '--display_error_number',
+        '--xml_link_info=example-i2c-ti-f28379d-bme280_linkInfo.xml',
+        '--entry_point=code_start',
+        '--rom_model',
+        # '-lrts2800_fpu32_eabi.lib'
+        # '-llibc.a',
+    ]
+endif
+#
+#
+# if board == 'nucleo-f767zi'
+#     desired_c_compile_flags += [
+#         '-DSTM32F767xx',
+#         '-DUSE_HAL_DRIVER',
+#     ]
+#     desired_cpp_compile_flags += [
+#         '-DSTM32F767xx',
+#         '-DUSE_HAL_DRIVER',
+#     ]
+
+#     # Add board-specific linker flags.
+#     #
+#     linker_script_path = meson.project_source_root() / 'src' / vendor / board / os / compiler / lang + c_language_ver / 'bsp/st/nucleo-f767zi/linker_scripts/STM32F767ZITX_FLASH.ld'
+#     c_l_flags += [
+#         '-T' + linker_script_path, map_file.format('stm32f767zi'), # The map file will be written to the root of the build directory.
+#         '-static',
+#         '--specs=nosys.specs',
+#         '--specs=nano.specs',
+#         '-lm',
+#     ]
+#     cpp_l_flags += [
+#         '-T' + linker_script_path, map_file.format('stm32f767zi'), # The map file will be written to the root of the build directory.
+#         '-static',
+#         '--specs=nosys.specs',
+#         '--specs=nano.specs',
+#         '-lm',
+#     ]
+# endif
+
+# Combine compile flags into structure expected by the check-and-apply-flags meson module.
+#
+compile_settings_list = [
+    {
+        'lang': 'c',
+        'compiler': host_c_compiler,
+        'flags': desired_c_compile_flags,
+        'isnative': false,
+    },
+    {
+        'lang': 'c',
+        'compiler': native_c_compiler,
+        'flags': desired_native_c_compile_flags,
+        'isnative': true,
+    },
+]
+
+# Process the compilation flags.
+#
+subdir('build-systems/meson/compiler/check-and-apply-flags')
+
+#endregion FLAGS
+
+#region BUILD SUPPORT
+
+# Provides the commands for conversion of .elf to .hex and .bin.
+#
+subdir('build-systems/meson/objcopy')
+
+#endregion BUILD SUPPORT
+
+#region PROJECT TOOLS
+
+# Override default format dirs.
+#
+clangformat_targets = [meson.project_source_root()]
+clangformat_excludes = []
+
+# Directories and files to be analyzed by vale.
+#
+vale_files = [
+    meson.project_source_root() / 'docs',
+    meson.project_source_root() / 'README.md',
+]
+
+# Vale exits with an error code when an error is found but that breaks the Meson
+# capture, so set Vale to exit nicely.
+#
+vale_exit_nicely = true
+
+# Configure Doxygen description, inputs, output dir, and excludes.
+#
+doxygen_description = 'F28379D.'
+doxygen_input = [
+    meson.project_source_root() / 'README.md',
+]
+doxygen_output_dir = meson.project_source_root() / 'docs/doxygen'
+
+# Exclude the monorepo files that are considered external to the subprojects.
+#
+doxygen_excludes = [
+    '*/ext/*',
+]
+
+# Configure coverxygen for doc coverage reporting.
+#
+coverxygen_src_dir = meson.project_source_root()
+
+# Paths for complexity analysis.
+#
+lizard_paths = [meson.project_source_root() / 'src']
+
+# Directories to be analyzed by sloccount.
+#
+sloccount_dirs = [
+    meson.project_source_root() / 'src',
+]
+
+# Reduce dup detection since this project is not critical.
+#
+jscpd_mode = 'mild'
+
+# Specify paths to be analyzed for duplicated code.
+#
+jscpd_dirs = [meson.project_source_root() / 'src']
+
+#endregion PROJECT TOOLS
+
+#region VARIANT TOOLS
+
+# Override default cppcheck dirs.
+#
+cppcheck_paths = [
+    meson.current_source_dir() / 'src',
+]
+
+# Add all project include paths to cppcheck.
+#
+cppcheck_includes = []
+
+# Exclude dirs from cppcheck, if needed.
+#
+cppcheck_excludes = []
+
+# Set cppchecks to run.
+#
+# Options:  all (only recommended when the whole program is scanned)
+#           warning
+#           style (default) (enables style, warning, performance, portability)
+#           performance
+#           portability
+#           information
+#           unusedFunction
+#           missingInclude
+#
+# cppcheck_checks = ['style']
+
+# Files to be analyzed by clang-tidy.
+#
+clangtidy_files = [
+    meson.current_source_dir() / 'src/**/*.c',
+    meson.current_source_dir() / 'src/**/*.h',
+]
+
+#endregion VARIANT TOOLS
+
+#region SOURCES
+
+# Include abstract sources.
+#
+# These are the abstract sources of the application and do not have a concrete
+# implementation for specific hardware. The specific variant sources that
+# provide appropriate implementations are included based on the cross string
+# provided to Meson.
+if meson.is_cross_build()
+    subdir('src')
+endif
+
+# Including the specific variant of sources based on the cross argument string.
+#
+# This module is respionsible for providing the tool arrays and settings to the
+# src module subdir-ed here. These arrays and settings are added to by the
+# modules included through the source dirs so a full set of sources for the
+# particular version specified are included.
+#
+# subdir('src' / vendor / board / os / compiler / lang + c_language_ver)
+
+#endregion SOURCES
+
+# Include tool modules now that configuration is set and soures are included.
+#
+# Including these must come after the creation of the override
+# arrays and settings so they are picked up by these tool modules.
+#
+subdir('build-systems/meson/analysis/clang-tidy')
+subdir('build-systems/meson/analysis/complexity')
+subdir('build-systems/meson/analysis/cppcheck')
+subdir('build-systems/meson/analysis/jscpd')
+subdir('build-systems/meson/analysis/leasot')
+subdir('build-systems/meson/analysis/sloccount')
+subdir('build-systems/meson/analysis/vale')
+subdir('build-systems/meson/docs/doxygen')
+subdir('build-systems/meson/docs/coverxygen')
+subdir('build-systems/meson/format')
+
+#region TESTS
+
+# Include tests module in native builds.
+#
+# The tests are off-target tests built natively with gcc.
+#
+if not meson.is_cross_build()
+    subdir('src/test')
+endif
+
+#endregion TESTS

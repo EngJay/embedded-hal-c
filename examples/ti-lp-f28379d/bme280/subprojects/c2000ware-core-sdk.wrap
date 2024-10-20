@@ -1,0 +1,4 @@
+[wrap-git]
+url = https://github.com/EngJay/c2000ware-core-sdk.git
+revision = head
+depth = 1

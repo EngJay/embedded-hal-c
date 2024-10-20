@@ -1,10 +1,14 @@
 
+# Python venv env
+env
+
 # Symlinks.
-examples/ti/lp-f28379d/bme280/build-systems
+build-systems
 
 # Generated.
+build/
+build_make/
 **/docs/doxygen/**/*.*
-!**/docs/doxygen/.gitkeep
 
 # Dependencies auto-downloaded / compiled by Meson.
 # Ignore everything in the subprojects directory except wrap files.
@@ -132,3 +136,7 @@ $RECYCLE.BIN/
 
 # .nfs files are created when an open file is removed but is still being accessed
 .nfs*
+
+# Exceptions
+!2837xD_FLASH_lnk_cpu1.cmd
+!2837xD_RAM_lnk_cpu1.cmd
