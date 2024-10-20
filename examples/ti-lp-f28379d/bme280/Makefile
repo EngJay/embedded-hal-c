@@ -154,11 +154,11 @@ CROSS ?=
 #
 NATIVE ?=
 
-# Default to native gcc-14 build if neither CROSS nor NATIVE is set.
+# Default to native gcc-11 build if neither CROSS nor NATIVE is set.
 # 
 ifeq ($(CROSS),)
   ifeq ($(NATIVE),)
-    NATIVE := gcc-14
+    NATIVE := gcc-11
   endif
 endif
 
@@ -232,12 +232,12 @@ default: | $(CONFIGURED_BUILD_DEP)
 
 .PHONY: test
 test: | $(CONFIGURED_TESTS_BUILD_DEP)
-	$(Q)NATIVE=gcc-14 ninja -C $(BUILD_DIR)/$(TESTS_BUILD_DIR) tests
+	$(Q)NATIVE=gcc-11 ninja -C $(BUILD_DIR)/$(TESTS_BUILD_DIR) tests
 
 .PHONY: test-coverage
 test-coverage: | $(CONFIGURED_TESTS_BUILD_DEP)
-	$(Q)NATIVE=gcc-14 ninja -C $(BUILD_DIR)/$(TESTS_BUILD_DIR) tests
-	$(Q)NATIVE=gcc-14 ninja -C $(BUILD_DIR)/$(TESTS_BUILD_DIR) coverage
+	$(Q)NATIVE=gcc-11 ninja -C $(BUILD_DIR)/$(TESTS_BUILD_DIR) tests
+	$(Q)NATIVE=gcc-11 ninja -C $(BUILD_DIR)/$(TESTS_BUILD_DIR) coverage
 
 .PHONY: docs
 docs: | $(CONFIGURED_BUILD_DEP)

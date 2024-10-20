@@ -17,8 +17,8 @@ make CROSS=c2000
 
 ## Running the tests
 
-- NOTE: The tests are built natively with `gcc-14` and run off-target, so
-  `gcc-14` must in the path on the machine or in the container running them.
+- NOTE: The tests are built natively with `gcc-11` and run off-target, so
+  `gcc-11` must in the path on the machine or in the container running them.
 
 The tests are run by running the `test` target of the Makefile shim.
 
